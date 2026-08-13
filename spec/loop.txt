@@ -1,0 +1,14 @@
+// Iteration - Count Controlled
+for i=0 to 7
+    print("Hello")
+next i
+
+// Iteration - Condition Controlled
+answer=input("What is the password?")
+while answer!="computer"
+    answer=input("What is the password?")
+endwhile
+
+do
+    answer=input("What is the password?")
+until answer=="computer"

@@ -1,0 +1,13 @@
+// Arrays
+array names[5]
+names[0]="Ahmad"
+names[1]="Ben"
+names[2]="Catherine"
+names[3]="Dana"
+names[4]="Elijah"
+
+print(names[3])
+
+// 2D Array
+Array board[8,8]
+board[0,0]="rook"

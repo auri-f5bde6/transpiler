@@ -1,0 +1,4 @@
+// Casting
+str(3)
+int("3")
+float("3.14")

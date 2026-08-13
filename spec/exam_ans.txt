@@ -1,0 +1,29 @@
+player_1 = true
+init=0
+while init<15
+   if player_1 then
+      print("Player 1:")
+   else
+      print("Player 2:")
+   endif
+   option=0
+   print("How many numbers do you want to choose?")
+   option=int(input())
+   while option>3 OR option<1
+      print ("Invalid option, choose again!")
+      option=int(input())
+   endwhile
+   while option>0
+      init=init+1
+      print("You took "+str(init))
+      if init == 15 then
+         if player_1 then
+            print("Player 1 have lost")
+        else
+            print("Player 2 have lost")
+         endif
+      break
+      endif
+      option=option-1
+   endwhile
+endwhile

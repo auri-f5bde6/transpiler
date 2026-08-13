@@ -1,0 +1,8 @@
+// Arithmetic operator
+x+y
+x-y
+x*y
+x/y
+x MOD y
+x DIV y
+x^2

@@ -1,0 +1,14 @@
+// Reading and writing from file
+myFile=openRead("sample.txt")
+x=myFile.readLine()
+myFile.close()
+
+myFile=openRead("sample.txt")
+while NOT myFile.endOfFile()
+    print(myFile.readLine())
+endwhile
+myFile.close()
+
+myFile=openRead("sample.txt")
+myFile.writeLine("Hello World")
+myFile.close()

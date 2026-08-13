@@ -1,0 +1,14 @@
+// Logical Operator
+x<=5 AND flag==false
+
+// Comparison Operator
+x==y
+x!=y
+x<y
+x<=y
+x>y
+x>=y
+x+y
+x-y
+x*y
+x/y

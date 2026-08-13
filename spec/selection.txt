@@ -1,0 +1,19 @@
+// Selection
+// If/else
+if entry=="a" then
+    //print("You have selected A")
+else if entry=="b" then
+    //print("You have selected B"
+else
+    //print("Unrecognised selection")
+endif
+
+// switch/case (skipping test for now)
+//switch entry:
+//    case "A":
+//        print("You selected A")
+//    case "B":
+//        print("You selected B")
+//    default:
+//        print("Unrecognised selection")
+//endswitch

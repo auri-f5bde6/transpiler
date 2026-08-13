@@ -1,0 +1,9 @@
+[workspace]
+resolver = "3"
+members = ["compiler","lexer", "parser", "repl"]
+
+[workspace.dependencies]
+lexer={path = "lexer"}
+parser={path = "parser"}
+compiler={path = "compiler"}
+qbe = "2.5.1"

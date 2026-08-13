@@ -1,0 +1,10 @@
+// String Handling
+someText="Computer Science"
+
+// Extras
+// Multi-line string
+"Test
+ing"
+"Hello
+World
+!"

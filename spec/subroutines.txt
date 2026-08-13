@@ -1,0 +1,16 @@
+// Subroutines
+y=triple(7)
+procedure greeting(name)
+    print("hello"+name)
+endprocedure
+
+// Modified for testing purposes
+x=1
+y=1
+foobar(x,y)
+assert(x==1)
+assert(y==2)
+procedure foobar(x: byVal, y: byRef)
+    x=x+1
+    y=y+1
+endprocedure

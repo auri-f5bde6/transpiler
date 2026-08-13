@@ -1,0 +1,5 @@
+// Variable
+x=3
+y=1
+name="Bob"
+global userid = 123
