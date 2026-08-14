@@ -6,4 +6,6 @@ edition = "2024"
 [dependencies]
 parser = { workspace = true }
 lexer = { workspace = true }
-qbe = {workspace = true}
+qbe = { workspace = true }
+paste = "1.0.15"
+indexmap = "2.14.0"

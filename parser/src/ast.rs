@@ -10,7 +10,7 @@ trait PreetyPrint {
 }
 const INDENTATION_SPACE: usize = 4;
 /// Enum for all possible Statement, and contains a pointer to a heap allocated instance of the object
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Statement {
     Assign(Box<AssignStatement>),
     Return(Box<ReturnStatement>),
@@ -82,7 +82,7 @@ impl From<ForLoopStatement> for Statement {
     }
 }
 /// Enum for all possible Expression, and contains a pointer to a heap allocated instance of the object
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Expression {
     Identifier(Box<Identifier>),
     IntegerLiteral(Box<IntegerLiteral>),
@@ -140,7 +140,7 @@ impl Display for Expression {
         }
     }
 }
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Identifier {
     pub value: String,
     pub token_position: TokenPosition,
@@ -173,7 +173,7 @@ impl Display for Identifier {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct IntegerLiteral {
     pub value: i64,
     pub token_position: TokenPosition,
@@ -196,7 +196,7 @@ impl TryFrom<Token> for IntegerLiteral {
         }
     }
 }
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct StringLiteral {
     pub value: String,
     pub token_position: TokenPosition,
@@ -219,7 +219,7 @@ impl TryFrom<Token> for StringLiteral {
         }
     }
 }
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct BooleanLiteral {
     pub value: bool,
     pub token_position: TokenPosition,
@@ -247,14 +247,14 @@ impl TryFrom<Token> for BooleanLiteral {
         }
     }
 }
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct ProgramRoot(pub BlockStatement);
 impl ProgramRoot {
     pub fn write_preety_string(&self, buffer: &mut String) -> std::fmt::Result {
         self.0.preety_fmt(buffer, 0)
     }
 }
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct AssignStatement {
     pub variable: Identifier,
     pub value: Expression,
@@ -266,7 +266,7 @@ impl PreetyPrint for AssignStatement {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct ReturnStatement {
     pub expression: Expression,
 }
@@ -277,7 +277,7 @@ impl PreetyPrint for ReturnStatement {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct WhileStatement {
     pub condition: Expression,
     pub body: BlockStatement,
@@ -291,7 +291,7 @@ impl PreetyPrint for WhileStatement {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct ForLoopStatement {
     pub variable: Identifier,
     pub initial_value: Expression,
@@ -313,7 +313,7 @@ impl PreetyPrint for ForLoopStatement {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct BlockStatement {
     pub body: Vec<Statement>,
 }
@@ -330,7 +330,7 @@ impl PreetyPrint for BlockStatement {
         Ok(())
     }
 }
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct IfStatement {
     pub condition: Expression,
     pub consequence: BlockStatement,
@@ -349,7 +349,7 @@ impl PreetyPrint for IfStatement {
         writeln!(buffer, "{}endif", indent)
     }
 }
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct ProcedureStatement {
     pub name: Identifier,
     pub parameters: Vec<Identifier>,
@@ -373,7 +373,7 @@ impl PreetyPrint for ProcedureStatement {
         writeln!(buffer, "{}endprocedure", indent)
     }
 }
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct ExpressionStatement {
     pub expression: Expression,
 }
@@ -384,7 +384,7 @@ impl PreetyPrint for ExpressionStatement {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct PrefixExpression {
     pub operator: Token,
     pub right: Expression,
@@ -395,7 +395,7 @@ impl Display for PrefixExpression {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct InfixExpression {
     pub left: Expression,
     pub operator: Token,
@@ -411,7 +411,7 @@ impl Display for InfixExpression {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct FunctionArguments {
     pub arguments: Vec<Expression>,
 }
@@ -433,7 +433,7 @@ impl Display for FunctionArguments {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct FunctionCallExpression {
     pub identifier: Identifier,
     pub arguments: FunctionArguments,
