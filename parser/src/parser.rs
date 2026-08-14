@@ -207,10 +207,10 @@ impl<'a> Parser<'a> {
                 | TokenType::Lesser
                 | TokenType::Or
                 | TokenType::And
-                    if precedence < get_precedence(peek.token_type) =>
-                {
-                    lhs = Expression::from(self.parse_infix(lhs)?);
-                }
+                if precedence < get_precedence(peek.token_type) =>
+                    {
+                        lhs = Expression::from(self.parse_infix(lhs)?);
+                    }
                 TokenType::LeftParen if precedence < get_precedence(peek.token_type) => {
                     self.cursor.bump()?;
                     lhs = Expression::from(self.parse_function_call(lhs)?);

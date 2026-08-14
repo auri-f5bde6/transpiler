@@ -37,7 +37,9 @@ fn main() {
         println!("\n\nAST (Parser)");
         match parser.parse() {
             Ok(ast) => {
-                Compiler::compile(ast);
+                let mut result = Compiler::compile(ast);
+                result.optimise();
+                println!("{}", result.get_program())
             }
             Err(err) => {
                 println!("\x1b[91mError: {:?}\x1b[0m", err);

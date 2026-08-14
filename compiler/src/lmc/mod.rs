@@ -1,36 +1,107 @@
-use std::concat;
 use paste::paste;
+use std::concat;
 
-pub struct Program(Vec<Box<dyn Instruction>>);
+pub struct Program(Vec<(Option<String>, Box<dyn Instruction>)>);
+
+macro_rules! impliment_with_operand {
+    ($name:ident) => {
+        paste! {
+            pub fn [<push_$name:lower>](&mut self, label: Option<String>, operand: String) {
+                self.push(label, [<$name:camel>]::new(operand))
+            }
+        }
+    };
+}
+macro_rules! impliment_no_operand {
+    ($name:ident) => {
+        paste! {
+            pub fn [<push_$name:lower>](&mut self, label: Option<String>) {
+                self.push(label, [<$name:camel>]::new())
+            }
+        }
+    };
+}
 
 impl Program {
     pub fn new() -> Program {
         Program(Vec::new())
     }
-    pub fn push(&mut self, instruction: Box<dyn Instruction>) {
-        self.0.push(instruction);
+    pub fn push(&mut self, label: Option<String>, instruction: Box<dyn Instruction>) {
+        self.0.push((label, instruction));
+    }
+    pub fn get_program(&self) -> String {
+        let mut result = String::new();
+        for (label, inst) in self.0.iter() {
+            if let Some(label) = label {
+                result.push_str(label);
+                result.push(' ');
+            }
+            result.push_str(inst.get_mnemonic().as_str());
+            result.push('\n');
+        }
+        result
+    }
+    pub fn merge(self, other: Program) -> Program {
+        Program(self.0.into_iter().chain(other.0).collect())
+    }
+    fn get_instruction(&self, index: usize) -> &(Option<String>, Box<dyn Instruction>) {
+        &self.0[index]
+    }
+    pub fn optimise(&mut self) {
+        let mut pos = 0;
+        while pos < self.0.len() - 1 {
+            let a = self.get_instruction(pos);
+            let b = self.get_instruction(pos + 1);
+
+            // Remove useless calls, e.g.
+
+            // Remove the lda x call
+            // sta x
+            // lda x
+            if (a.1.get_numeric() == 300 && b.1.get_numeric() == 500 && a.1.get_operand() == b.1.get_operand() && a.0.is_none() && b.0.is_none()) {
+                self.0.remove(pos + 1);
+                pos -= 1
+            }
+
+
+            pos += 1;
+        }
+    }
+
+    impliment_with_operand!(ADD);
+    impliment_with_operand!(SUB);
+    impliment_with_operand!(STA);
+    impliment_with_operand!(LDA);
+    impliment_with_operand!(BRA);
+    impliment_with_operand!(BRZ);
+    impliment_with_operand!(BRP);
+    impliment_no_operand!(INP);
+    impliment_no_operand!(OUT);
+    impliment_no_operand!(HLT);
+
+    pub fn push_dat(&mut self, label: Option<String>, dat: u16) {
+        self.push(label, Dat::new(dat));
     }
 }
 
 pub trait Instruction {
-    fn new(mailbox: Option<u16>) -> Box<Self>
-    where
-        Self: Sized;
+    fn get_operand(&self) -> Option<&str>;
     fn get_numeric(&self) -> u16;
     fn get_mnemonic(&self) -> String;
 }
 
-macro_rules! lone_instruction {
+macro_rules! no_operand {
     ($name:ident, $numeric: literal) => {
-        paste!{
+        paste! {
             pub struct [<$name:camel>];
-            impl Instruction for [<$name:camel>] {
-                fn new(mailbox: Option<u16>) -> Box<Self>{
-                    if !mailbox.is_none() {
-                        let panic_message = concat!(stringify!($name), " do not mailbox to be passed as argument, should be None");
-                        panic!("{}", panic_message);
-                    }
+            impl [<$name:camel>]{
+                pub fn new() -> Box<Self>{
                     Box::new(Self{})
+                }
+            }
+            impl Instruction for [<$name:camel>] {
+                fn get_operand(&self) -> Option<&str> {
+                    None
                 }
                 fn get_numeric(&self) -> u16 {
                     $numeric
@@ -44,50 +115,64 @@ macro_rules! lone_instruction {
     };
 }
 
-macro_rules! instruction_take_mailbox_as_reference {
+macro_rules! with_operand {
     ($name:ident, $numeric: literal) => {
-        paste!{
+        paste! {
             pub struct [<$name:camel>]{
-                mailbox: u16
+                operand: String
+            }
+            impl [<$name:camel>]{
+                pub fn new(operand: String) -> Box<Self>{
+                    Box::new(Self{operand})
+                }
             }
             impl Instruction for [<$name:camel>] {
-                fn new(mailbox: Option<u16>) -> Box<Self>{
-                    Box::new(Self{mailbox: mailbox.expect(concat!(stringify!($name), " expect mailbox to be passed as argument"))})
+                fn get_operand(&self) -> Option<&str> {
+                    Some(&self.operand)
                 }
                 fn get_numeric(&self) -> u16 {
-                    $numeric + self.mailbox
+                    $numeric
                 }
                 fn get_mnemonic(&self) -> String {
-                    format!(concat!(stringify!($name), " {}"), self.mailbox)
+                    format!(concat!(stringify!($name), " {}"), self.operand)
                 }
             }
         }
     };
 }
 
-instruction_take_mailbox_as_reference!(ADD, 100);
-instruction_take_mailbox_as_reference!(SUB, 200);
-instruction_take_mailbox_as_reference!(STA, 300);
-instruction_take_mailbox_as_reference!(LDA, 500);
-instruction_take_mailbox_as_reference!(BRA, 600);
-instruction_take_mailbox_as_reference!(BRZ, 700);
-instruction_take_mailbox_as_reference!(BRP, 800);
-lone_instruction!(INP, 901);
-lone_instruction!(OUT, 902);
-lone_instruction!(HLT, 0);
+with_operand!(ADD, 100);
+with_operand!(SUB, 200);
+with_operand!(STA, 300);
+with_operand!(LDA, 500);
+with_operand!(BRA, 600);
+with_operand!(BRZ, 700);
+with_operand!(BRP, 800);
+no_operand!(INP, 901);
+no_operand!(OUT, 902);
+no_operand!(HLT, 0);
 
 struct Dat {
-    data: u16,
+    operand: String,
+    value: u16,
+}
+impl Dat {
+    fn new(operand: u16) -> Box<Self> {
+        Box::new(Self {
+            operand: operand.to_string(),
+            value: operand,
+        })
+    }
 }
 impl Instruction for Dat {
-    fn new(mailbox: Option<u16>) -> Box<Self> {
-        Box::new(Self { data: mailbox.unwrap_or(0) })
+    fn get_operand(&self) -> Option<&str> {
+        return Some(&self.operand);
     }
     fn get_numeric(&self) -> u16 {
-        self.data
+        self.value
     }
 
     fn get_mnemonic(&self) -> String {
-        format!("DAT {}", self.data)
+        format!("DAT {}", self.operand)
     }
 }
