@@ -285,23 +285,67 @@ impl Compiler {
                     }
 
                     TokenType::GreaterEqual => {
-                        // lhs >= rhs
-                        //         (LDA lhs)
-                        //          SUB rhs
-                        //          BRP true
-                        //    false LDA literal_0
-                        //          BRA continue
-                        //     true LDA literal_1
-                        // continue ...
-                        todo!()
+                        // lhs > rhs
+                        //               (LDA lhs)
+                        //                SUB rhs
+                        //                BRP label_true
+                        //    label_false LDA literal_0
+                        //                BRA label_continue
+                        //     label_true LDA literal_1
+                        // label_continue ...
+
+                        let zero = self.get_literal(0);
+                        let one = self.get_literal(1);
+
+                        let generator = self.get_hinted_labels("greater_equal");
+                        let l_false = generator.get_hinted_label("false");
+                        let l_true = generator.get_hinted_label("true");
+                        let l_continue = generator.get_hinted_label("continue");
+
+                        self.push_sub(None, &temp_rhs);
+                        self.push_brp(None, &l_true);
+                        self.push_lda(Some(&l_false), &zero);
+                        self.push_bra(None, &l_continue);
+                        self.push_lda(Some(&l_true), &one);
+
+                        self.next_label = Some(l_continue);
                     }
                     TokenType::Lesser => {
-                        // a <= b == !(a > b)
-                        todo!()
+                        // lhs < rhs == !(lhs >= rhs)
+                        let zero = self.get_literal(0);
+                        let one = self.get_literal(1);
+
+                        let generator = self.get_hinted_labels("lesser");
+                        let l_false = generator.get_hinted_label("false");
+                        let l_true = generator.get_hinted_label("true");
+                        let l_continue = generator.get_hinted_label("continue");
+
+                        self.push_sub(None, &temp_rhs);
+                        self.push_brp(None, &l_true);
+                        self.push_lda(Some(&l_false), &one);
+                        self.push_bra(None, &l_continue);
+                        self.push_lda(Some(&l_true), &zero);
+
+                        self.next_label = Some(l_continue);
                     }
                     TokenType::LesserEqual => {
-                        // a < b == !(a >= b)
-                        todo!()
+                        // lhs <= rhs == !(lhs > rhs)
+                        let zero = self.get_literal(0);
+                        let one = self.get_literal(1);
+
+                        let generator = self.get_hinted_labels("lesser_equal");
+                        let l_false = generator.get_hinted_label("false");
+                        let l_true = generator.get_hinted_label("true");
+                        let l_continue = generator.get_hinted_label("continue");
+
+                        self.push_sub(None, &temp_rhs);
+                        self.push_brz(None, &l_false);
+                        self.push_brp(None, &l_true);
+                        self.push_lda(Some(&l_false), &one);
+                        self.push_bra(None, &l_continue);
+                        self.push_lda(Some(&l_true), &zero);
+
+                        self.next_label = Some(l_continue);
                     }
                     _ => todo!(),
                 };
@@ -353,7 +397,7 @@ impl Compiler {
             }
             Statement::If(stm) => {
                 let consequence = &self.get_label();
-                self.compile_expression(None, &stm.condition);
+                self.compile_expression(label, &stm.condition);
                 self.push_brp(None, consequence);
                 self.compile_statement(None, &stm.alternitive.clone().into());
                 self.push_bra(None, consequence);
@@ -361,8 +405,8 @@ impl Compiler {
             }
             Statement::Procedure(_) => todo!(),
             Statement::While(stm) => {
-                let temp = self.get_label();
-                let cond = label.unwrap_or(&temp);
+                let mut cond = &*self.get_label();
+                cond = label.unwrap_or(&cond);
                 let end = self.get_label();
                 self.compile_expression(Some(cond), &stm.condition);
                 self.push_brz(None, &end);
