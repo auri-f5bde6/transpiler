@@ -11,11 +11,22 @@ impl Program {
         self.0.push((label, instruction));
     }
     pub fn get_program(&self) -> String {
+        let mut longest_label_len = 0;
+        for (label, _) in self.0.iter() {
+            let len = label.as_ref().map(|s| s.len()).unwrap_or(0);
+            if len > longest_label_len {
+                longest_label_len = len
+            }
+        }
+
         let mut result = String::new();
         for (label, inst) in self.0.iter() {
             if let Some(label) = label {
+                result.push_str(&" ".repeat(longest_label_len - label.len()));
                 result.push_str(label);
                 result.push(' ');
+            } else {
+                result.push_str(&" ".repeat(longest_label_len + 1));
             }
             result.push_str(inst.get_mnemonic().as_str());
             result.push('\n');
@@ -39,11 +50,15 @@ impl Program {
             // Remove the lda x call
             // sta x
             // lda x
-            if (a.1.get_numeric() == 300 && b.1.get_numeric() == 500 && a.1.get_operand() == b.1.get_operand() && a.0.is_none() && b.0.is_none()) {
+            if (a.1.get_numeric() == 300
+                && b.1.get_numeric() == 500
+                && a.1.get_operand() == b.1.get_operand()
+                && a.0.is_none()
+                && b.0.is_none())
+            {
                 self.0.remove(pos + 1);
                 pos -= 1
             }
-
 
             pos += 1;
         }

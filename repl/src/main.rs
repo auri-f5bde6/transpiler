@@ -34,9 +34,10 @@ fn main() {
                 }
             }
         }
-        println!("\n\nAST (Parser)");
+        //println!("\n\nAST (Parser)");
         match parser.parse() {
             Ok(ast) => {
+                println!("LMC (compiler)");
                 let mut result = Compiler::compile(ast);
                 result.optimise();
                 println!("{}", result.get_program())
