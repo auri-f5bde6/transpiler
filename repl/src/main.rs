@@ -19,7 +19,7 @@ fn main() {
         let string = String::from_utf8_lossy(&buf);
         let mut lexer = Lexer::from(&*string);
         let mut parser = Parser::from(&*string);
-        println!("Tokens (Lexer phase)");
+        println!("Tokens (Lexer)");
         loop {
             match lexer.bump() {
                 Ok(token) => {
@@ -34,9 +34,14 @@ fn main() {
                 }
             }
         }
-        //println!("\n\nAST (Parser)");
+        println!("\n");
+        //println!("\nAST (Parser)");
         match parser.parse() {
             Ok(ast) => {
+                println!("Pretty Printed (Parser)");
+                let mut buf = String::new();
+                ast.write_preety_string(&mut buf).unwrap();
+                println!("{}", buf);
                 println!("LMC (compiler)");
                 let mut result = Compiler::compile(ast);
                 result.optimise();
