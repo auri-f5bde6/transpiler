@@ -2,7 +2,9 @@ use crate::lmc::*;
 use indexmap::{IndexMap, IndexSet};
 use lexer::token::TokenType;
 use parser::Statement;
-use parser::ast::{Expression, ForLoopStatement, InfixExpression, PrefixExpression, ProgramRoot};
+use parser::ast::{
+    Expression, ForLoopStatement, InfixExpression, PrefixExpression, ProgramRoot, WhileStatement,
+};
 use paste::paste;
 use std::collections::HashSet;
 use std::collections::btree_set::Intersection;
@@ -51,8 +53,10 @@ struct LabelGenerator<'a> {
 
 impl<'a> LabelGenerator<'a> {
     pub(crate) fn get_hinted_label(&self, hint: &str) -> String {
-        let result = format!("label_{}_{}_{}", self.name, hint, self.label_count);
-        result
+        format!(
+            "label_{}_{}_{}",
+            self.name, hint, self.label_count
+        )
     }
 }
 
@@ -138,7 +142,7 @@ impl Compiler {
         string
     }
 
-    // Remember to run self.next_label.take() after this is ran, if any instruction is manually added afterward
+    /// Result of the expression is stored in the accumulator
     fn compile_expression(&mut self, label: Option<&str>, expr: &Expression) {
         match expr {
             Expression::IntegerLiteral(literal) => {
@@ -166,47 +170,67 @@ impl Compiler {
                     TokenType::Minus => self.push_sub(None.take(), &temp_rhs),
                     TokenType::Divide => todo!(),
                     TokenType::Multiply => {
-                        // a * b
-                        //        LDA a
-                        //        STA temp_3
-                        //        LDA literal_0
-                        //        STA temp_2
-                        //        LDA temp_3
-                        // label1 BRZ label2
-                        //        SUB literal_1
-                        //        STA temp_1
-                        //        LDA temp_2
-                        //        ADD b
-                        //        STA temp_2
-                        //        LDA temp_1
-                        //        BRZ label2
-                        //        BRA label1
-                        // label2 LDA temp_2
-                        let one = &*self.get_literal(1);
+                        /*
+                                          lhs * rhs
 
-                        let label1 = &*self.get_label();
-                        let label2 = &*self.get_label();
+                                          result = 0
+                                          count = 10
+                                          while count > 0
+                                              result = result + 2
+                                              count=count-1
+                                          endwhile
 
-                        let temp1 = &self.get_temp();
-                        let temp2 = &*self.get_temp();
-                        let temp3 = &*self.get_temp();
+                                          STA temp_count
+                                          LDA literal_0
+                                          STA temp_result
+                        label_while_start LDA temp_count
+                                          BRZ label_comp_false
+                                          BRP label_comp_true
+                         label_comp_false LDA literal_0
+                                          BRA label_comp_done
+                          label_comp_true LDA literal_1
+                          label_comp_done BRZ label_finish
+                                          LDA temp_result
+                                          ADD rhs
+                                          STA temp_result
+                                          LDA temp_count
+                                          SUB literal_1
+                                          STA temp_count
+                                          BRA label_while_start
+                             label_finish LDA temp_result
+                                          */
 
-                        self.push_sta(None, temp3);
-                        self.push_lda(None, one);
-                        self.push_sta(None, temp2);
-                        self.push_lda(None, temp3);
-                        self.push_brz(Some(label1), label2);
-                        self.push_sub(None, one);
-                        self.push_sta(None, temp1);
-                        self.push_lda(None, temp2);
+                        let zero = self.get_literal(0);
+                        let one = self.get_literal(1);
+
+                        let count = self.get_temp();
+                        let result = self.get_temp();
+
+                        let labels = self.get_hinted_labels("multiplication");
+                        let while_start = labels.get_hinted_label("while_start");
+                        let comp_true = labels.get_hinted_label("comp_true");
+                        let comp_false = labels.get_hinted_label("comp_false");
+                        let comp_done = labels.get_hinted_label("comp_done");
+                        let finish = labels.get_hinted_label("finish");
+
+                        self.push_sta(None, &count);
+                        self.push_lda(None, &zero);
+                        self.push_sta(None, &result);
+                        self.push_lda(Some(&while_start), &count);
+                        self.push_brz(None, &comp_false);
+                        self.push_brp(None, &comp_true);
+                        self.push_lda(Some(&comp_false), &zero);
+                        self.push_bra(None, &comp_done);
+                        self.push_lda(Some(&comp_true), &one);
+                        self.push_brz(Some(&comp_done), &finish);
+                        self.push_lda(None, &result);
                         self.push_add(None, &temp_rhs);
-                        self.push_sta(None, temp2);
-                        self.push_lda(None, temp1);
-                        self.push_brz(None, label2);
-                        self.push_bra(None, label1);
-                        self.push_lda(Some(label2), temp2);
-                        self.release_temp();
-                        self.release_temp();
+                        self.push_sta(None, &result);
+                        self.push_lda(None, &count);
+                        self.push_sub(None, &one);
+                        self.push_sta(None, &count);
+                        self.push_bra(None, &while_start);
+                        self.push_lda(Some(&finish), &result);
                     }
                     TokenType::Modulo => todo!(),
                     TokenType::Equal => {
