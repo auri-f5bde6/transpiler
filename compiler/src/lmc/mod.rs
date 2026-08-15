@@ -3,25 +3,6 @@ use std::concat;
 
 pub struct Program(Vec<(Option<String>, Box<dyn Instruction>)>);
 
-macro_rules! impliment_with_operand {
-    ($name:ident) => {
-        paste! {
-            pub fn [<push_$name:lower>](&mut self, label: Option<String>, operand: String) {
-                self.push(label, [<$name:camel>]::new(operand))
-            }
-        }
-    };
-}
-macro_rules! impliment_no_operand {
-    ($name:ident) => {
-        paste! {
-            pub fn [<push_$name:lower>](&mut self, label: Option<String>) {
-                self.push(label, [<$name:camel>]::new())
-            }
-        }
-    };
-}
-
 impl Program {
     pub fn new() -> Program {
         Program(Vec::new())
@@ -67,17 +48,6 @@ impl Program {
             pos += 1;
         }
     }
-
-    impliment_with_operand!(ADD);
-    impliment_with_operand!(SUB);
-    impliment_with_operand!(STA);
-    impliment_with_operand!(LDA);
-    impliment_with_operand!(BRA);
-    impliment_with_operand!(BRZ);
-    impliment_with_operand!(BRP);
-    impliment_no_operand!(INP);
-    impliment_no_operand!(OUT);
-    impliment_no_operand!(HLT);
 
     pub fn push_dat(&mut self, label: Option<String>, dat: u16) {
         self.push(label, Dat::new(dat));

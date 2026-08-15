@@ -3,8 +3,58 @@ use indexmap::{IndexMap, IndexSet};
 use lexer::token::TokenType;
 use parser::Statement;
 use parser::ast::{Expression, ForLoopStatement, InfixExpression, PrefixExpression, ProgramRoot};
+use paste::paste;
 use std::collections::HashSet;
 use std::collections::btree_set::Intersection;
+
+macro_rules! implement_with_operand {
+    ($name:ident) => {
+        paste! {
+            pub fn [<push_$name:lower>](&mut self, label: Option<&str>, operand: &str) {
+                let final_label =
+                    if self.next_label.is_some() && label.is_some(){
+                        self.program.push(self.next_label.take(), Bra::new(label.map(String::from).unwrap()));
+                        label.map(String::from)
+                    } else if self.next_label.is_some() || label.is_some(){
+                        Some(self.next_label.take().unwrap_or_else(||label.map(String::from).unwrap()))
+                    }else{
+                        None
+                    };
+                self.program.push(final_label, [<$name:camel>]::new(operand.to_owned()))
+            }
+        }
+    };
+}
+macro_rules! implement_no_operand {
+    ($name:ident) => {
+        paste! {
+            pub fn [<push_$name:lower>](&mut self, label: Option<&str>) {
+                let final_label =
+                    if self.next_label.is_some() && label.is_some(){
+                        self.program.push(self.next_label.take(), Bra::new(label.map(String::from).unwrap()));
+                        label.map(String::from)
+                    } else if self.next_label.is_some() || label.is_some(){
+                        Some(self.next_label.take().unwrap_or_else(||label.map(String::from).unwrap()))
+                    }else{
+                        None
+                    };
+                self.program.push(final_label, [<$name:camel>]::new())
+            }
+        }
+    };
+}
+
+struct LabelGenerator<'a> {
+    name: &'a str,
+    label_count: usize,
+}
+
+impl<'a> LabelGenerator<'a> {
+    pub(crate) fn get_hinted_label(&self, hint: &str) -> String {
+        let result = format!("label_{}_{}_{}", self.name, hint, self.label_count);
+        result
+    }
+}
 
 pub struct Compiler {
     program: Program,
@@ -15,6 +65,17 @@ pub struct Compiler {
     next_label: Option<String>,
 }
 impl Compiler {
+    implement_with_operand!(ADD);
+    implement_with_operand!(SUB);
+    implement_with_operand!(STA);
+    implement_with_operand!(LDA);
+    implement_with_operand!(BRA);
+    implement_with_operand!(BRZ);
+    implement_with_operand!(BRP);
+    implement_no_operand!(INP);
+    implement_no_operand!(OUT);
+    implement_no_operand!(HLT);
+
     pub fn compile(program_root: ProgramRoot) -> Program {
         let mut compiler = Compiler {
             program: Program::new(),
@@ -25,10 +86,9 @@ impl Compiler {
             next_label: None,
         };
         for stm in program_root.0.body {
-            let label = compiler.next_label.take();
-            compiler.compile_statement(label, &stm);
+            compiler.compile_statement(None, &stm);
         }
-        compiler.program.push_hlt(compiler.next_label.take());
+        compiler.push_hlt(None);
         let Compiler {
             program,
             variables,
@@ -60,6 +120,15 @@ impl Compiler {
         result
     }
 
+    fn get_hinted_labels<'a>(&mut self, name: &'a str) -> LabelGenerator<'a> {
+        let generator = LabelGenerator {
+            name,
+            label_count: self.label_count,
+        };
+        self.label_count += 1;
+        generator
+    }
+
     fn get_literal(&mut self, literal: u16) -> String {
         let string = format!("{}_{}", "literal", literal);
         if !self.variables.contains(&string) {
@@ -70,31 +139,31 @@ impl Compiler {
     }
 
     // Remember to run self.next_label.take() after this is ran, if any instruction is manually added afterward
-    fn compile_expression(&mut self, label: Option<String>, expr: &Expression) {
+    fn compile_expression(&mut self, label: Option<&str>, expr: &Expression) {
         match expr {
             Expression::IntegerLiteral(literal) => {
-                let l = self.get_literal(literal.value as u16);
-                self.program.push_lda(label, l)
+                let l = &self.get_literal(literal.value as u16);
+                self.push_lda(label, l)
             }
             Expression::BooleanLiteral(literal) => {
-                let l = self.get_literal(literal.value as u16);
-                self.program.push_lda(label, l)
+                let l = &self.get_literal(literal.value as u16);
+                self.push_lda(label, l)
             }
             Expression::Identifier(identifier) => {
                 if !self.variables.contains(&identifier.value) {
                     // Todo: proper error reporting
                     panic!("Variable '{}' not found", identifier.value);
                 }
-                self.program.push_lda(label, identifier.value.clone());
+                self.push_lda(label, &identifier.value);
             }
             Expression::Infix(infix) => {
                 self.compile_expression(label, &infix.right);
                 let temp_rhs = self.get_temp();
-                self.program.push_sta(self.next_label.take(), temp_rhs.clone());
+                self.push_sta(None, &temp_rhs);
                 self.compile_expression(None, &infix.left);
                 match infix.operator.token_type {
-                    TokenType::Plus => self.program.push_add(self.next_label.take(), temp_rhs),
-                    TokenType::Minus => self.program.push_sub(self.next_label.take(), temp_rhs),
+                    TokenType::Plus => self.push_add(None.take(), &temp_rhs),
+                    TokenType::Minus => self.push_sub(None.take(), &temp_rhs),
                     TokenType::Divide => todo!(),
                     TokenType::Multiply => {
                         // a * b
@@ -113,149 +182,124 @@ impl Compiler {
                         //        BRZ label2
                         //        BRA label1
                         // label2 LDA temp_2
-                        let one = self.get_literal(1);
+                        let one = &*self.get_literal(1);
 
-                        let label1 = self.get_label();
-                        let label2 = self.get_label();
+                        let label1 = &*self.get_label();
+                        let label2 = &*self.get_label();
 
-                        let temp1 = self.get_temp();
-                        let temp2 = self.get_temp();
-                        let temp3 = self.get_temp();
+                        let temp1 = &self.get_temp();
+                        let temp2 = &*self.get_temp();
+                        let temp3 = &*self.get_temp();
 
-                        self.program.push_sta(self.next_label.take(), temp3.clone());
-                        self.program.push_lda(None, one.clone());
-                        self.program.push_sta(None, temp2.clone());
-                        self.program.push_lda(None, temp3.clone());
-                        self.program.push_brz(Some(label1.clone()), label2.clone());
-                        self.program.push_sub(None, one);
-                        self.program.push_sta(None, temp1.clone());
-                        self.program.push_lda(None, temp2.clone());
-                        self.program.push_add(None, temp_rhs);
-                        self.program.push_sta(None, temp2.clone());
-                        self.program.push_lda(None, temp1);
-                        self.program.push_brz(None, label2.clone());
-                        self.program.push_bra(None, label1);
-                        self.program.push_lda(Some(label2), temp2);
+                        self.push_sta(None, temp3);
+                        self.push_lda(None, one);
+                        self.push_sta(None, temp2);
+                        self.push_lda(None, temp3);
+                        self.push_brz(Some(label1), label2);
+                        self.push_sub(None, one);
+                        self.push_sta(None, temp1);
+                        self.push_lda(None, temp2);
+                        self.push_add(None, &temp_rhs);
+                        self.push_sta(None, temp2);
+                        self.push_lda(None, temp1);
+                        self.push_brz(None, label2);
+                        self.push_bra(None, label1);
+                        self.push_lda(Some(label2), temp2);
                         self.release_temp();
                         self.release_temp();
                     }
                     TokenType::Modulo => todo!(),
                     TokenType::Equal => {
-                        // a == b
-                        // b - a
-                        //       LDA a
-                        //       SUB b
-                        //       BRZ label1
-                        //       LDA literal_0
-                        //       BRA label2
-                        // label1 LDA literal1
-                        // label2 ...
-                        let one = self.get_literal(1);
+                        // lhs == rhs
+                        //               (LDA lhs)
+                        //                SUB rhs
+                        //                BRZ label_true
+                        //                BRP label_false
+                        //     label_true LDA literal_1
+                        //                BRA label_continue
+                        //    label_false LDA literal_0
+                        // label_continue ...
+
                         let zero = self.get_literal(0);
-                        let label1 = self.get_label();
-                        let label2 = self.get_label();
-                        self.program.push_sub(self.next_label.take(), temp_rhs);
-                        self.program.push_brz(None, label1.clone());
-                        self.program.push_lda(None, zero);
-                        self.program.push_bra(None, label2.clone());
-                        self.program.push_lda(Some(label1), one);
-                        self.next_label = Some(label2);
+                        let one = self.get_literal(1);
+
+                        let generator = self.get_hinted_labels("equal");
+                        let l_true = generator.get_hinted_label("true");
+                        let l_false = generator.get_hinted_label("false");
+                        let l_continue = generator.get_hinted_label("continue");
+
+                        self.push_sub(None, &temp_rhs);
+                        self.push_brz(None, &l_true);
+                        self.push_brp(None, &l_false);
+                        self.push_lda(Some(&l_true), &one);
+                        self.push_bra(None, &l_continue);
+                        self.push_lda(Some(&l_false), &zero);
+                        self.next_label = Some(l_continue);
                     }
                     TokenType::NotEqual => {
-                        let one = self.get_literal(1);
                         let zero = self.get_literal(0);
-                        let label1 = self.get_label();
-                        let label2 = self.get_label();
-                        self.program.push_sub(self.next_label.take(), temp_rhs);
-                        self.program.push_brz(None, label1.clone());
-                        self.program.push_lda(None, one);
-                        self.program.push_bra(None, label2.clone());
-                        self.program.push_lda(Some(label1), zero);
-                        self.next_label = Some(label2);
+                        let one = self.get_literal(1);
+
+                        let generator = self.get_hinted_labels("not_equal");
+                        let l_true = generator.get_hinted_label("true");
+                        let l_false = generator.get_hinted_label("false");
+                        let l_continue = generator.get_hinted_label("continue");
+
+                        self.push_sub(None, &temp_rhs);
+                        self.push_brz(None, &l_true);
+                        self.push_brp(None, &l_false);
+                        self.push_lda(Some(&l_true), &zero);
+                        self.push_bra(None, &l_continue);
+                        self.push_lda(Some(&l_false), &one);
+                        self.next_label = Some(l_continue);
                     }
                     TokenType::Greater => {
-                        // a > b
-                        // (a-1) - b
-                        //        LDA a
-                        //        SUB 1
-                        //        SUB b
-                        //        BRP label1
-                        //        LDA literal_0
-                        //        BRA label2
-                        // label1 LDA literal_1
-                        // label2 ...
+                        // lhs > rhs
+                        //               (LDA lhs)
+                        //                SUB rhs
+                        //                BRZ label_false
+                        //                BRP label_true
+                        //    label_false LDA literal_0
+                        //                BRA label_continue
+                        //     label_true LDA literal_1
+                        // label_continue ...
 
                         let zero = self.get_literal(0);
                         let one = self.get_literal(1);
 
-                        let label1 = self.get_label();
-                        let label2 = self.get_label();
+                        let generator = self.get_hinted_labels("greater");
+                        let l_false = generator.get_hinted_label("false");
+                        let l_true = generator.get_hinted_label("true");
+                        let l_continue = generator.get_hinted_label("continue");
 
-                        self.program.push_sub(self.next_label.take(), one.clone());
-                        self.program.push_sub(None, temp_rhs);
-                        self.program.push_brp(None, label1.clone());
-                        self.program.push_lda(None, zero);
-                        self.program.push_bra(None, label2.clone());
-                        self.program.push_lda(Some(label1), one);
-                        self.next_label = Some(label2);
+                        self.push_sub(None, &temp_rhs);
+                        self.push_brz(None, &l_false);
+                        self.push_brp(None, &l_true);
+                        self.push_lda(Some(&l_false), &zero);
+                        self.push_bra(None, &l_continue);
+                        self.push_lda(Some(&l_true), &one);
+
+                        self.next_label = Some(l_continue);
                     }
 
                     TokenType::GreaterEqual => {
-                        // a >= b
-                        // b - a
-                        //        LDA a
-                        //        SUB b
-                        //        BRP label1
-                        //        LDA literal_0
-                        //        BRA label2
-                        // label1 LDA literal_1
-                        // label2 ...
-
-                        let zero = self.get_literal(0);
-                        let one = self.get_literal(1);
-
-                        let label1 = self.get_label();
-                        let label2 = self.get_label();
-
-                        self.program.push_sub(self.next_label.take(), temp_rhs);
-                        self.program.push_sub(None, one.clone());
-                        self.program.push_brp(None, label1.clone());
-                        self.program.push_lda(None, zero);
-                        self.program.push_bra(None, label2.clone());
-                        self.program.push_lda(Some(label1), one);
-                        self.next_label = Some(label2);
+                        // lhs >= rhs
+                        //         (LDA lhs)
+                        //          SUB rhs
+                        //          BRP true
+                        //    false LDA literal_0
+                        //          BRA continue
+                        //     true LDA literal_1
+                        // continue ...
+                        todo!()
                     }
                     TokenType::Lesser => {
                         // a <= b == !(a > b)
-                        let zero = self.get_literal(0);
-                        let one = self.get_literal(1);
-
-                        let label1 = self.get_label();
-                        let label2 = self.get_label();
-
-                        self.program.push_sub(self.next_label.take(), temp_rhs);
-                        self.program.push_sub(None, one.clone());
-                        self.program.push_brp(None, label1.clone());
-                        self.program.push_lda(None, one);
-                        self.program.push_bra(None, label2.clone());
-                        self.program.push_lda(Some(label1), zero);
-                        self.next_label = Some(label2);
+                        todo!()
                     }
                     TokenType::LesserEqual => {
                         // a < b == !(a >= b)
-                        let zero = self.get_literal(0);
-                        let one = self.get_literal(1);
-
-                        let label1 = self.get_label();
-                        let label2 = self.get_label();
-
-                        self.program.push_sub(self.next_label.take(), one.clone());
-                        self.program.push_sub(None, temp_rhs);
-                        self.program.push_brp(None, label1.clone());
-                        self.program.push_lda(None, one);
-                        self.program.push_bra(None, label2.clone());
-                        self.program.push_lda(Some(label1), zero);
-                        self.next_label = Some(label2);
+                        todo!()
                     }
                     _ => todo!(),
                 };
@@ -264,7 +308,7 @@ impl Compiler {
             Expression::FunctionCall(call) => match call.identifier.value.as_str() {
                 "print" => {
                     self.compile_expression(label, &call.arguments.arguments[0]);
-                    self.program.push_out(self.next_label.take())
+                    self.push_out(None)
                 }
                 _ => todo!(),
             },
@@ -279,20 +323,20 @@ impl Compiler {
         }
     }
 
-    fn compile_statement(&mut self, mut label: Option<String>, stm: &Statement) {
+    fn compile_statement(&mut self, label: Option<&str>, stm: &Statement) {
         if (self.next_label.is_some()) {
             if (label.is_some()) {
                 todo!("no idea, ill fix this when it happens")
             } else {
                 println!("Is this ever ran?");
-                label = self.next_label.take()
+                // label = self.next_label.take()
             }
         }
         match stm {
             Statement::Assign(stm) => {
                 self.compile_expression(label, &stm.value);
                 self.new_variable(stm.variable.value.clone());
-                self.program.push_sta(self.next_label.take(), stm.variable.to_string());
+                self.push_sta(None, &stm.variable.value);
             }
 
             Statement::Return(_) => todo!(),
@@ -301,27 +345,27 @@ impl Compiler {
                 if !block.body.is_empty() {
                     self.compile_statement(label, &block.body[0]);
                     for s in block.body.iter().skip(1) {
-                        let l = self.next_label.take();
-                        self.compile_statement(l, &s);
+                        self.compile_statement(None, &s);
                     }
                 }
             }
             Statement::If(stm) => {
-                let consequence = self.get_label();
+                let consequence = &self.get_label();
                 self.compile_expression(None, &stm.condition);
-                self.program.push_brp(self.next_label.take(), consequence.clone());
+                self.push_brp(None, consequence);
                 self.compile_statement(None, &stm.alternitive.clone().into());
-                self.program.push_bra(self.next_label.take(), consequence.clone());
+                self.push_bra(None, consequence);
                 self.compile_statement(Some(consequence), &stm.consequence.clone().into())
             }
             Statement::Procedure(_) => todo!(),
             Statement::While(stm) => {
-                let cond = label.unwrap_or(self.get_label());
+                let temp = self.get_label();
+                let cond = label.unwrap_or(&temp);
                 let end = self.get_label();
-                self.compile_expression(Some(cond.clone()), &stm.condition);
-                self.program.push_brz(self.next_label.take(), end.clone());
+                self.compile_expression(Some(cond), &stm.condition);
+                self.push_brz(None, &end);
                 self.compile_statement(None, &stm.body.clone().into());
-                self.program.push_bra(self.next_label.take(), cond);
+                self.push_bra(None, cond);
                 self.next_label = Some(end);
             }
             Statement::ForLoop(stm) => {
