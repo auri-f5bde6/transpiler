@@ -345,10 +345,10 @@ impl Compiler {
                         let l_continue = generator.get_hinted_label("continue");
 
                         self.push_sub(None, &temp_rhs);
-                        self.push_brp(None, &l_true);
-                        self.push_lda(Some(&l_false), &one);
+                        self.push_brp(None, &l_false);
+                        self.push_lda(Some(&l_true), &one);
                         self.push_bra(None, &l_continue);
-                        self.push_lda(Some(&l_true), &zero);
+                        self.push_lda(Some(&l_false), &zero);
 
                         self.next_label = Some(l_continue);
                     }
@@ -363,11 +363,11 @@ impl Compiler {
                         let l_continue = generator.get_hinted_label("continue");
 
                         self.push_sub(None, &temp_rhs);
-                        self.push_brz(None, &l_false);
-                        self.push_brp(None, &l_true);
-                        self.push_lda(Some(&l_false), &one);
+                        self.push_brz(None, &l_true);
+                        self.push_brp(None, &l_false);
+                        self.push_lda(Some(&l_true), &one);
                         self.push_bra(None, &l_continue);
-                        self.push_lda(Some(&l_true), &zero);
+                        self.push_lda(Some(&l_false), &zero);
 
                         self.next_label = Some(l_continue);
                     }
@@ -429,16 +429,36 @@ impl Compiler {
             }
             Statement::Procedure(_) => todo!(),
             Statement::While(stm) => {
-                let mut cond = &*self.get_label();
-                cond = label.unwrap_or(&cond);
-                let end = self.get_label();
-                self.compile_expression(Some(cond), &stm.condition);
+                let generator = self.get_hinted_labels("while");
+                let cond = generator.get_hinted_label("cond");
+                let end = generator.get_hinted_label("end");
+                self.compile_expression(Some(&cond), &stm.condition);
                 self.push_brz(None, &end);
                 self.compile_statement(None, &stm.body.clone().into());
-                self.push_bra(None, cond);
+                self.push_bra(None, &cond);
                 self.next_label = Some(end);
             }
             Statement::ForLoop(stm) => {
+                /*
+                              LDA initial_vale
+                              STA i
+                   label_cond LDA i
+                              SUB end_value
+                              BRZ label_continue_false
+                              BRP label_continue_true
+         label_continue_false LDA literal_1
+                              BRA label_continue
+          label_continue_true LDA literal_0
+               label_continue BRZ label_1
+                              ...
+                              LDA i
+                              ADD literal_1
+                              STA i
+                              BRA label_while_cond_0
+                      label_1 ...
+
+
+                 */
                 self.new_variable(stm.variable.value.clone());
             }
         }

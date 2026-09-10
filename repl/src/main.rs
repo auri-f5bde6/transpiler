@@ -7,6 +7,7 @@ use std::{
     io::{Read, Write, stdin},
     process::{Command, Stdio},
 };
+use compiler::optimiser::Optimiser;
 
 fn main() {
     println!("Press ctrl-d to send eof");
@@ -44,7 +45,7 @@ fn main() {
                 println!("{}", buf);
                 println!("LMC (compiler)");
                 let mut result = Compiler::compile(ast);
-                result.optimise();
+                result = Optimiser::new(result).optimise();
                 println!("{}", result.get_program())
             }
             Err(err) => {
