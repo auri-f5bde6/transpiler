@@ -154,11 +154,12 @@ impl Compiler {
                 self.push_lda(label, l)
             }
             Expression::Identifier(identifier) => {
-                if !self.variables.contains(&identifier.value) {
+                let name = format!("variable_{}", identifier);
+                if !self.variables.contains(&name) {
                     // Todo: proper error reporting
-                    panic!("Variable '{}' not found", identifier.value);
+                    panic!("Variable '{}' not found", name);
                 }
-                self.push_lda(label, &identifier.value);
+                self.push_lda(label, &name);
             }
             Expression::Infix(infix) => {
                 self.compile_expression(label, &infix.right);
@@ -386,11 +387,13 @@ impl Compiler {
         }
     }
 
-    fn new_variable(&mut self, name: String) {
+    fn new_variable(&mut self, name: String) -> String {
+        let name = format!("variable_{}", name);
         if !self.variables.contains(&name) {
             self.variables_dat.push_dat(Some(name.clone()), 0);
-            self.variables.insert(name);
+            self.variables.insert(name.clone());
         }
+        name
     }
 
     fn compile_statement(&mut self, label: Option<&str>, stm: &Statement) {
@@ -405,8 +408,8 @@ impl Compiler {
         match stm {
             Statement::Assign(stm) => {
                 self.compile_expression(label, &stm.value);
-                self.new_variable(stm.variable.value.clone());
-                self.push_sta(None, &stm.variable.value);
+                let name = self.new_variable(stm.variable.value.clone());
+                self.push_sta(None, &name);
             }
 
             Statement::Return(_) => todo!(),
