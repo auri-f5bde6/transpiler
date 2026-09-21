@@ -76,7 +76,7 @@ impl Optimiser {
                     let current = optimiser.current().unwrap();
                     if (current
                         .get_operand()
-                        .is_some_and(|operand| operand == label_1))
+                        .is_some_and(|operand| operand == label_1 || operand == label_2))
                     {
                         optimiser.set_current(ProgramLine::new(
                             current.label.clone(),

@@ -466,25 +466,25 @@ impl Visitor<()> for Compiler {
 
     fn visit_not(&mut self, prefix: &PrefixExpression, right: ()) -> () {
         //               (LDA rhs)
-        //                BRP label_true
-        //                LDA literal_1
+        //                BRZ label_false
+        //                LDA literal_0
         //                BRA label_continue
-        //     label_true LDA literal_0
+        //     label_true LDA literal_1
         // label_continue ...
         let zero = self.get_literal(0);
         let one = self.get_literal(1);
 
         let labels = self.get_hinted_labels("not");
-        let l_true = labels.get_hinted_label("true");
+        let l_false = labels.get_hinted_label("false");
         let l_continue = labels.get_hinted_label("continue");
 
 
         self.visit_expression(&prefix.right);
-        self.push_brp(&l_true);
-        self.push_lda(&one);
-        self.push_bra(&l_continue);
-        self.next_label.push_back(l_true);
+        self.push_brz(&l_false);
         self.push_lda(&zero);
+        self.push_bra(&l_continue);
+        self.next_label.push_back(l_false);
+        self.push_lda(&one);
         self.next_label.push_back(l_continue);
     }
 
@@ -508,13 +508,18 @@ impl Visitor<()> for Compiler {
     }
 
     fn visit_if(&mut self, stmt: &IfStatement) {
-        let consequence = &self.get_label();
+        let labels = self.get_hinted_labels("if");
+        let l_consequence = labels.get_hinted_label("consequence");
+        let l_alternative = labels.get_hinted_label("alternative");
+        let l_continue = labels.get_hinted_label("continue");
+
         self.visit_expression(&stmt.condition);
-        self.push_brp(consequence);
+        self.push_brz(&l_alternative);
+        self.visit_statement(&stmt.consequence.clone().into());
+        self.push_bra(&l_continue);
+        self.next_label.push_back(l_alternative);
         self.visit_statement(&stmt.alternitive.clone().into());
-        self.push_bra(consequence);
-        self.next_label.push_back(consequence.clone());
-        self.visit_statement(&stmt.consequence.clone().into())
+        self.next_label.push_back(l_continue);
     }
 
     fn visit_procedure(&mut self, stmt: &ProcedureStatement) {
