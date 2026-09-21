@@ -189,9 +189,8 @@ impl Visitor<()> for Compiler {
     }
 
     fn visit_prefix(&mut self, prefix: &PrefixExpression) -> () {
-        todo!()
+        self.visit_prefix_default(prefix, ())
     }
-
     fn visit_infix(&mut self, infix: &InfixExpression) -> () {
         self.visit_infix_default(infix, (), ())
     }
@@ -206,19 +205,19 @@ impl Visitor<()> for Compiler {
         }
     }
 
-    fn visit_plus(&mut self, infix: &InfixExpression, left: (), right: ()) -> () {
+    fn visit_addition(&mut self, infix: &InfixExpression, left: (), right: ()) -> () {
         self.infix_helper(infix, |c, temp_rhs| c.push_add(&temp_rhs))
     }
 
-    fn visit_minus(&mut self, infix: &InfixExpression, left: (), right: ()) -> () {
+    fn visit_subtraction(&mut self, infix: &InfixExpression, left: (), right: ()) -> () {
         self.infix_helper(infix, |c, temp_rhs| c.push_sub(&temp_rhs))
     }
 
-    fn visit_divide(&mut self, infix: &InfixExpression, left: (), right: ()) -> () {
+    fn visit_division(&mut self, infix: &InfixExpression, left: (), right: ()) -> () {
         todo!()
     }
 
-    fn visit_multiply(&mut self, infix: &InfixExpression, left: (), right: ()) -> () {
+    fn visit_multiplication(&mut self, infix: &InfixExpression, left: (), right: ()) -> () {
         /*
                         lhs * rhs
 
@@ -455,6 +454,38 @@ impl Visitor<()> for Compiler {
 
             c.next_label.push_back(l_continue);
         })
+    }
+
+    fn visit_positive(&mut self, prefix: &PrefixExpression, right: ()) -> () {
+        self.visit_expression(&prefix.right)
+    }
+
+    fn visit_negation(&mut self, prefix: &PrefixExpression, right: ()) -> () {
+        todo!()
+    }
+
+    fn visit_not(&mut self, prefix: &PrefixExpression, right: ()) -> () {
+        //               (LDA rhs)
+        //                BRP label_true
+        //                LDA literal_1
+        //                BRA label_continue
+        //     label_true LDA literal_0
+        // label_continue ...
+        let zero = self.get_literal(0);
+        let one = self.get_literal(1);
+
+        let labels = self.get_hinted_labels("not");
+        let l_true = labels.get_hinted_label("true");
+        let l_continue = labels.get_hinted_label("continue");
+
+
+        self.visit_expression(&prefix.right);
+        self.push_brp(&l_true);
+        self.push_lda(&one);
+        self.push_bra(&l_continue);
+        self.next_label.push_back(l_true);
+        self.push_lda(&zero);
+        self.next_label.push_back(l_continue);
     }
 
     fn visit_assign(&mut self, stmt: &AssignStatement) {
