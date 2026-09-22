@@ -3,12 +3,6 @@ use crate::ast::{AssignStatement, BlockStatement, BooleanLiteral, Expression, Ex
 use lexer::token::TokenType;
 
 pub trait Visitor<S, E> {
-    fn visit_program_root(&mut self, root: &ProgramRoot) {
-        for i in &root.0.body {
-            self.visit_statement(i);
-        }
-    }
-
     fn visit_expression(&mut self, expression: &Expression) -> E {
         match expression {
             Expression::Identifier(ident) => self.visit_identifier(ident),

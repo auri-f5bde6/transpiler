@@ -1,9 +1,11 @@
 [workspace]
 resolver = "3"
-members = ["compiler","lexer", "parser", "repl"]
+members = ["compiler", "lexer", "parser", "repl", "type-checker"]
 
 [workspace.dependencies]
-lexer={path = "lexer"}
-parser={path = "parser"}
-compiler={path = "compiler"}
+lexer = { path = "lexer" }
+parser = { path = "parser" }
+compiler = { path = "compiler" }
+type-checker = { path = "type-checker" }
+
 qbe = "2.5.1"

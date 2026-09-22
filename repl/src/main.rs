@@ -1,14 +1,15 @@
 use compiler::compiler::Compiler;
+use compiler::optimiser::Optimiser;
 use lexer::lexer::Lexer;
 use lexer::token::TokenType;
 use parser::parser::Parser;
+use parser::{PrettyPrint, Visitor};
 use qbe::Module;
 use std::{
     io::{Read, Write, stdin},
     process::{Command, Stdio},
 };
-use compiler::optimiser::Optimiser;
-use parser::PrettyPrint;
+use type_checker::TypeChecker;
 
 fn main() {
     println!("Press ctrl-d to send eof");
@@ -40,12 +41,17 @@ fn main() {
         //println!("\nAST (Parser)");
         match parser.parse() {
             Ok(ast) => {
-                println!("Pretty Printed (Parser)");
-                println!("{}", ast.pretty_print());
-                println!("LMC (compiler)");
-                let mut result = Compiler::compile(ast);
-                result = Optimiser::new(result).optimise();
-                println!("{}", result.get_program())
+                let errors = TypeChecker::new().check(&ast);
+                if let Some(errors) = errors {
+                    println!("{:?}", errors)
+                } else {
+                    println!("Pretty Printed (Parser)");
+                    println!("{}", ast.pretty_print());
+                    println!("LMC (compiler)");
+                    let mut result = Compiler::compile(ast);
+                    result = Optimiser::new(result).optimise();
+                    println!("{}", result.get_program())
+                }
             }
             Err(err) => {
                 println!("\x1b[91mError: {:?}\x1b[0m", err);

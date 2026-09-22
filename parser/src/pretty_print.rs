@@ -31,7 +31,9 @@ impl PrettyPrint for ProgramRoot {
     fn pretty_print(&self) -> String {
         let mut buffer = String::new();
         let mut printer = PrettyPrinter::new(&mut buffer);
-        printer.visit_program_root(&self);
+        for i in &self.0.body {
+            printer.visit_statement(i)
+        }
         buffer
     }
 }
@@ -223,7 +225,12 @@ impl<'a> Visitor<(), String> for PrettyPrinter<'a> {
                 buffer.push(',')
             }
         }
-        let line = format!("{}procedure {}({})", " ".repeat(self.indentation * SPACE_INDENTATION), self.visit_identifier(&stmt.name), buffer);
+        let line = format!(
+            "{}procedure {}({})",
+            " ".repeat(self.indentation * SPACE_INDENTATION),
+            self.visit_identifier(&stmt.name),
+            buffer
+        );
         self.buffer.push_str(&*line);
         self.visit_block(&stmt.body);
         self.buffer.push_str("endprocedure")

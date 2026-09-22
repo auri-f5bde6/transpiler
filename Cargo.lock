@@ -66,4 +66,13 @@ dependencies = [
  "lexer",
  "parser",
  "qbe",
+ "type-checker",
+]
+
+[[package]]
+name = "type-checker"
+version = "0.1.0"
+dependencies = [
+ "lexer",
+ "parser",
 ]
