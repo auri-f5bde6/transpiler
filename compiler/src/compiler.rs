@@ -93,9 +93,7 @@ impl Compiler {
             label_count: 0,
             next_label: vec![].into(),
         };
-        for stm in program_root.0.body {
-            compiler.visit_statement(&stm);
-        }
+        compiler.visit_program_root(&program_root);
         compiler.push_hlt();
         let Compiler {
             program,

@@ -31,9 +31,7 @@ impl PrettyPrint for ProgramRoot {
     fn pretty_print(&self) -> String {
         let mut buffer = String::new();
         let mut printer = PrettyPrinter::new(&mut buffer);
-        for i in &self.0.body {
-            printer.visit_statement(i)
-        }
+        printer.visit_program_root(&self);
         buffer
     }
 }
@@ -217,14 +215,49 @@ impl<'a> Visitor<(), String> for PrettyPrinter<'a> {
     }
 
     fn visit_procedure(&mut self, stmt: &ProcedureStatement) {
-        todo!()
+        let mut buffer = String::new();
+        for (i, v) in stmt.parameters.iter().enumerate() {
+            let expression = self.visit_identifier(v);
+            buffer.push_str(&*expression);
+            if (i < stmt.parameters.len() - 1) {
+                buffer.push(',')
+            }
+        }
+        let line = format!("{}procedure {}({})", " ".repeat(self.indentation * SPACE_INDENTATION), self.visit_identifier(&stmt.name), buffer);
+        self.buffer.push_str(&*line);
+        self.visit_block(&stmt.body);
+        self.buffer.push_str("endprocedure")
     }
 
     fn visit_while(&mut self, stmt: &WhileStatement) {
-        todo!()
+        let line = format!(
+            "{}while {}",
+            " ".repeat(self.indentation * SPACE_INDENTATION),
+            self.visit_expression(&stmt.condition)
+        );
+        self.buffer.push_str(&*line);
+        self.visit_block(&stmt.body);
+        self.buffer.push_str(&*format!(
+            "{}endwhile",
+            " ".repeat(self.indentation * SPACE_INDENTATION)
+        ))
     }
 
     fn visit_for_loop(&mut self, stmt: &ForLoopStatement) {
-        todo!()
+        let for_line = format!(
+            "{}for {} = {} to {}",
+            " ".repeat(self.indentation * SPACE_INDENTATION),
+            self.visit_identifier(&stmt.variable),
+            self.visit_expression(&stmt.initial_value),
+            self.visit_expression(&stmt.end_value)
+        );
+        self.buffer.push_str(&*for_line);
+        self.visit_block(&stmt.body);
+        let next_line = format!(
+            "{}next {}",
+            " ".repeat(self.indentation * SPACE_INDENTATION),
+            self.visit_identifier(&stmt.next_variable)
+        );
+        self.buffer.push_str(&*next_line);
     }
 }
