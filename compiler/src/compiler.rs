@@ -2,10 +2,10 @@ use crate::lmc::*;
 use indexmap::{IndexMap, IndexSet};
 use lexer::token::TokenType;
 use parser::ast::{
-    AssignStatement, BlockStatement, BooleanLiteral, Expression, ForLoopStatement,
-    FunctionCallExpression, Identifier, IfStatement, InfixExpression, IntegerLiteral,
-    PrefixExpression, ProcedureStatement, ProgramRoot, ReturnStatement, StringLiteral,
-    WhileStatement,
+    AssignStatement, BlockStatement, BooleanLiteral, Expression, ExpressionStatement,
+    ForLoopStatement, FunctionCallExpression, Identifier, IfStatement, InfixExpression,
+    IntegerLiteral, PrefixExpression, ProcedureStatement, ProgramRoot, ReturnStatement,
+    StringLiteral, WhileStatement,
 };
 use parser::{Statement, Visitor};
 use paste::paste;
@@ -164,9 +164,9 @@ impl Compiler {
         self.release_temp()
     }
 }
-impl Visitor<()> for Compiler {
+impl Visitor<(), ()> for Compiler {
     fn visit_identifier(&mut self, ident: &Identifier) -> () {
-        let name = format!("variable_{}", ident);
+        let name = format!("variable_{}", ident.value);
         if !self.variables.contains(&name) {
             // Todo: proper error reporting
             panic!("Variable '{}' not found", name);
@@ -478,7 +478,6 @@ impl Visitor<()> for Compiler {
         let l_false = labels.get_hinted_label("false");
         let l_continue = labels.get_hinted_label("continue");
 
-
         self.visit_expression(&prefix.right);
         self.push_brz(&l_false);
         self.push_lda(&zero);
@@ -496,6 +495,10 @@ impl Visitor<()> for Compiler {
 
     fn visit_return(&mut self, stmt: &ReturnStatement) {
         todo!()
+    }
+
+    fn visit_expression_statement(&mut self, expr: &ExpressionStatement) -> () {
+        self.visit_expression(&expr.expression)
     }
 
     fn visit_block(&mut self, block: &BlockStatement) {

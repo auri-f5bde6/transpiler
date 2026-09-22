@@ -1,13 +1,9 @@
 use crate::Statement;
-use crate::ast::{
-    AssignStatement, BlockStatement, BooleanLiteral, Expression, ForLoopStatement,
-    FunctionCallExpression, Identifier, IfStatement, InfixExpression, IntegerLiteral,
-    PrefixExpression, ProcedureStatement, ReturnStatement, StringLiteral, WhileStatement,
-};
+use crate::ast::{AssignStatement, BlockStatement, BooleanLiteral, Expression, ExpressionStatement, ForLoopStatement, FunctionCallExpression, Identifier, IfStatement, InfixExpression, IntegerLiteral, PrefixExpression, ProcedureStatement, ReturnStatement, StringLiteral, WhileStatement};
 use lexer::token::TokenType;
 
-pub trait Visitor<T> {
-    fn visit_expression(&mut self, expression: &Expression) -> T {
+pub trait Visitor<S, E> {
+    fn visit_expression(&mut self, expression: &Expression) -> E {
         match expression {
             Expression::Identifier(ident) => self.visit_identifier(ident),
             Expression::IntegerLiteral(literal) => self.visit_integer(literal),
@@ -18,15 +14,15 @@ pub trait Visitor<T> {
             Expression::FunctionCall(call) => self.visit_function_call(call),
         }
     }
-    fn visit_identifier(&mut self, ident: &Identifier) -> T;
-    fn visit_integer(&mut self, literal: &IntegerLiteral) -> T;
-    fn visit_boolean(&mut self, literal: &BooleanLiteral) -> T;
-    fn visit_string(&mut self, literal: &StringLiteral) -> T;
-    fn visit_prefix(&mut self, prefix: &PrefixExpression) -> T {
+    fn visit_identifier(&mut self, ident: &Identifier) -> E;
+    fn visit_integer(&mut self, literal: &IntegerLiteral) -> E;
+    fn visit_boolean(&mut self, literal: &BooleanLiteral) -> E;
+    fn visit_string(&mut self, literal: &StringLiteral) -> E;
+    fn visit_prefix(&mut self, prefix: &PrefixExpression) -> E {
         let right = self.visit_expression(&prefix.right);
         self.visit_prefix_default(prefix, right)
     }
-    fn visit_prefix_default(&mut self, prefix: &PrefixExpression, right: T) -> T {
+    fn visit_prefix_default(&mut self, prefix: &PrefixExpression, right: E) -> E {
         match prefix.operator.token_type {
             TokenType::Plus => self.visit_positive(prefix, right),
             TokenType::Not => self.visit_not(prefix, right),
@@ -34,12 +30,12 @@ pub trait Visitor<T> {
             _ => todo!(),
         }
     }
-    fn visit_infix(&mut self, infix: &InfixExpression) -> T {
+    fn visit_infix(&mut self, infix: &InfixExpression) -> E {
         let left = self.visit_expression(&infix.left);
         let right = self.visit_expression(&infix.right);
         self.visit_infix_default(infix, left, right)
     }
-    fn visit_infix_default(&mut self, infix: &InfixExpression, left: T, right: T) -> T {
+    fn visit_infix_default(&mut self, infix: &InfixExpression, left: E, right: E) -> E {
         match infix.operator.token_type {
             TokenType::Plus => self.visit_addition(infix, left, right),
             TokenType::Minus => self.visit_subtraction(infix, left, right),
@@ -55,28 +51,28 @@ pub trait Visitor<T> {
             _ => todo!(),
         }
     }
-    fn visit_function_call(&mut self, call: &FunctionCallExpression) -> T;
+    fn visit_function_call(&mut self, call: &FunctionCallExpression) -> E;
 
-    fn visit_addition(&mut self, infix: &InfixExpression, left: T, right: T) -> T;
-    fn visit_subtraction(&mut self, infix: &InfixExpression, left: T, right: T) -> T;
-    fn visit_division(&mut self, infix: &InfixExpression, left: T, right: T) -> T;
-    fn visit_multiplication(&mut self, infix: &InfixExpression, left: T, right: T) -> T;
-    fn visit_equal(&mut self, infix: &InfixExpression, left: T, right: T) -> T;
-    fn visit_not_equal(&mut self, infix: &InfixExpression, left: T, right: T) -> T;
-    fn visit_greater(&mut self, infix: &InfixExpression, left: T, right: T) -> T;
-    fn visit_greater_equal(&mut self, infix: &InfixExpression, left: T, right: T) -> T;
-    fn visit_lesser(&mut self, infix: &InfixExpression, left: T, right: T) -> T;
-    fn visit_lesser_equal(&mut self, infix: &InfixExpression, left: T, right: T) -> T;
+    fn visit_addition(&mut self, infix: &InfixExpression, left: E, right: E) -> E;
+    fn visit_subtraction(&mut self, infix: &InfixExpression, left: E, right: E) -> E;
+    fn visit_division(&mut self, infix: &InfixExpression, left: E, right: E) -> E;
+    fn visit_multiplication(&mut self, infix: &InfixExpression, left: E, right: E) -> E;
+    fn visit_equal(&mut self, infix: &InfixExpression, left: E, right: E) -> E;
+    fn visit_not_equal(&mut self, infix: &InfixExpression, left: E, right: E) -> E;
+    fn visit_greater(&mut self, infix: &InfixExpression, left: E, right: E) -> E;
+    fn visit_greater_equal(&mut self, infix: &InfixExpression, left: E, right: E) -> E;
+    fn visit_lesser(&mut self, infix: &InfixExpression, left: E, right: E) -> E;
+    fn visit_lesser_equal(&mut self, infix: &InfixExpression, left: E, right: E) -> E;
 
-    fn visit_positive(&mut self, prefix: &PrefixExpression, right: T) -> T;
-    fn visit_negation(&mut self, prefix: &PrefixExpression, right: T) -> T;
-    fn visit_not(&mut self, prefix: &PrefixExpression, right: T) -> T;
+    fn visit_positive(&mut self, prefix: &PrefixExpression, right: E) -> E;
+    fn visit_negation(&mut self, prefix: &PrefixExpression, right: E) -> E;
+    fn visit_not(&mut self, prefix: &PrefixExpression, right: E) -> E;
 
-    fn visit_statement(&mut self, statement: &Statement) {
+    fn visit_statement(&mut self, statement: &Statement) -> S {
         match statement {
             Statement::Assign(stmt) => self.visit_assign(stmt),
             Statement::Return(stmt) => self.visit_return(stmt),
-            Statement::Expression(expr) => _ = self.visit_expression(&expr.expression),
+            Statement::Expression(expr) => self.visit_expression_statement(expr),
             Statement::Block(stmt) => self.visit_block(stmt),
             Statement::If(stmt) => self.visit_if(stmt),
             Statement::Procedure(stmt) => self.visit_procedure(stmt),
@@ -84,11 +80,12 @@ pub trait Visitor<T> {
             Statement::ForLoop(stmt) => self.visit_for_loop(stmt),
         }
     }
-    fn visit_assign(&mut self, stmt: &AssignStatement);
-    fn visit_return(&mut self, stmt: &ReturnStatement);
-    fn visit_block(&mut self, stmt: &BlockStatement);
-    fn visit_if(&mut self, stmt: &IfStatement);
-    fn visit_procedure(&mut self, stmt: &ProcedureStatement);
-    fn visit_while(&mut self, stmt: &WhileStatement);
-    fn visit_for_loop(&mut self, stmt: &ForLoopStatement);
+    fn visit_assign(&mut self, stmt: &AssignStatement) -> S;
+    fn visit_return(&mut self, stmt: &ReturnStatement) -> S;
+    fn visit_expression_statement(&mut self, expr: &ExpressionStatement) -> S;
+    fn visit_block(&mut self, stmt: &BlockStatement) -> S;
+    fn visit_if(&mut self, stmt: &IfStatement) -> S;
+    fn visit_procedure(&mut self, stmt: &ProcedureStatement) -> S;
+    fn visit_while(&mut self, stmt: &WhileStatement) -> S;
+    fn visit_for_loop(&mut self, stmt: &ForLoopStatement) -> S;
 }

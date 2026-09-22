@@ -8,6 +8,7 @@ use std::{
     process::{Command, Stdio},
 };
 use compiler::optimiser::Optimiser;
+use parser::PrettyPrint;
 
 fn main() {
     println!("Press ctrl-d to send eof");
@@ -40,9 +41,7 @@ fn main() {
         match parser.parse() {
             Ok(ast) => {
                 println!("Pretty Printed (Parser)");
-                let mut buf = String::new();
-                ast.write_preety_string(&mut buf).unwrap();
-                println!("{}", buf);
+                println!("{}", ast.pretty_print());
                 println!("LMC (compiler)");
                 let mut result = Compiler::compile(ast);
                 result = Optimiser::new(result).optimise();
