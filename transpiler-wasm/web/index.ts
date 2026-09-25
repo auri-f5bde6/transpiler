@@ -4,7 +4,7 @@ import {transpile} from '../pkg';
 
 const code_input = document.getElementById("code")! as HTMLTextAreaElement;
 const output = document.getElementById("output")!;
-const transpile_button = document.getElementById("button")! as HTMLInputElement;
+const transpile_button = document.getElementById("floating-arrow")!;
 const slider = document.getElementById("slider") as HTMLDivElement
 const code_half = document.getElementById("code-half-container") as HTMLDivElement;
 

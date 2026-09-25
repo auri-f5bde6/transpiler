@@ -1,16 +1,35 @@
+@import "@catppuccin/palette/css/catppuccin.css";
+
+@font-face {
+    font-family: 'Maple Mono';
+    font-style: normal;
+    font-display: swap;
+    font-weight: 400;
+    src: url(https://cdn.jsdelivr.net/fontsource/fonts/maple-mono@5.3.0/latin-400-normal.woff2) format(woff2);
+}
+
+body {
+    background: #1e2030;
+}
+
 .code {
-    font-family: monospace;
-    font-size: larger;
+    font-family: "Maple Mono", monospace;
+    font-size: medium;
     white-space: pre;
-    color: #cad3f5;
-    background-color: #363a4f;
+    color: var(--ctp-macchiato-text);
+    background-color: var(--ctp-macchiato-surface0);
     height: 100%;
     box-sizing: border-box;
 }
 
 
-.half {
-    height: 100%;
+.rounded-container {
+    border-radius: 10px;
+    border: 4px solid var(--ctp-macchiato-surface0);
+}
+
+.half-container {
+
 }
 
 .input-output-container {
@@ -18,10 +37,12 @@
     flex-direction: row;
     height: 90vh;
     width: 100%;
+    margin-bottom: 10px;
 }
 
 #code-half-container {
-    width: 50%;
+    width: 100%;
+    height: 100%;
     resize: horizontal;
 }
 
@@ -34,6 +55,9 @@
 
 #code {
     width: 100%;
+    resize: none;
+    border: none;
+    outline: none;
 }
 
 #output {
@@ -42,8 +66,70 @@
 
 
 #slider {
-    background-color: #dee2e6;
     cursor: col-resize;
     width: 0.2rem;
-    user-select: none;
+    position: relative;
+}
+
+h1 {
+    margin: 0;
+    color: var(--ctp-macchiato-text);
+    line-height: 0.9;
+}
+
+sub {
+    margin: 0;
+    color: var(--ctp-macchiato-text);
+}
+
+#header-container {
+    background-color: var(--ctp-macchiato-surface0);
+    margin: 10px;
+    padding: 10px;
+    border-radius: 10px;
+    border: 4px solid var(--ctp-macchiato-surface0);
+}
+
+.thing {
+    border-bottom: 2px solid var(--ctp-macchiato-pink);
+    justify-content: center;
+    background-color: var(--ctp-macchiato-surface0);
+    display: flex;
+    align-items: center;
+    line-height: 2rem;
+    color: var(--ctp-macchiato-blue);
+    font-size: small;
+    margin-bottom: 6px;
+}
+
+.height-100 {
+    height: calc(100% - (32px + 2px + 6px));
+    box-sizing: border-box;
+}
+
+#floating-arrow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--ctp-macchiato-pink);
+    font-size: 2.3rem;
+    background-color: var(--ctp-macchiato-surface1);
+    border-radius: 10px;
+}
+
+#floating-arrow:hover {
+    color: var(--ctp-macchiato-surface1);
+    font-size: 2.5rem;
+    background-color: var(--ctp-macchiato-pink);
+    animation: grow 0.1s;
+}
+
+@keyframes grow {
+    from {
+        font-size: 2.3rem;
+    }
+    to {
+        font-size: 2.5rem;
+    }
 }

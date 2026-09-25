@@ -3,18 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <title>Title</title>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=arrow_forward"
+          rel="stylesheet"/>
 </head>
 <body>
+<div id="header-container">
+    <h1>Transpiler</h1>
+    <sub>Or compiler?</sub>
+</div>
 <div class="input-output-container">
-    <div class="half" id="code-half-container">
-        <label for="code"></label>
-        <textarea class="code" id="code"></textarea>
+    <div id="code-half-container">
+        <a class="rounded-container thing" href="https://www.ocr.org.uk/Images/260952-pseudocode-guide.pdf">
+            OCR Pseudocode
+        </a>
+        <div class="rounded-container height-100">
+            <label for="code"></label>
+            <textarea class="code" id="code"></textarea>
+        </div>
     </div>
-    <div id="slider"></div>
-    <div class="half" id="output-half-container">
-        <div class="code" id="output"></div>
+
+    <div id="slider">
+        <span class="material-symbols-outlined" id="floating-arrow">
+        arrow_forward
+        </span>
+    </div>
+    <div id="output-half-container">
+        <a class="rounded-container thing" href="https://en.wikipedia.org/wiki/Little_Man_Computer">
+            Little Man Computer
+        </a>
+        <div class="rounded-container height-100">
+            <div class="code" id="output"></div>
+        </div>
     </div>
 </div>
-<input id="button" type="button" value="transpile"/>
 </body>
 </html>
