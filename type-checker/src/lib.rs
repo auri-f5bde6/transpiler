@@ -154,6 +154,9 @@ pub enum TypeError {
         got: Type,
         range: TokenPosition,
     },
+    ExpectedIntegerForForLoop {
+        got: Type,
+    },
 }
 
 #[derive(PartialEq, Clone, Debug, Eq, Hash)]
@@ -257,6 +260,28 @@ impl TypeChecker {
             Ok(())
         }
     }
+    // TODO: cant be bothered to tt munch if
+    fn for_loop_helper_1(b: Type) -> Result<(), TypeErrors> {
+        if (b != Type::Int) {
+            Err(TypeErrors::from(TypeError::ExpectedIntegerForForLoop { got: b }))
+        } else {
+            Ok(())
+        }
+    }
+    fn for_loop_helper_2(&mut self, a: &String) -> Result<(), TypeErrors> {
+        if let Some(t) = self.env_map.get(a).cloned() {
+            if (t == Type::Int) {
+                Ok(())
+            } else {
+                Err(TypeErrors::from(TypeError::ExpectedIntegerForForLoop { got: t }))
+            }
+        } else {
+            Err(TypeErrors::from(TypeError::UndeclaredVariable {
+                variable: a.clone(),
+                range: TokenPosition::temp_default(),
+            }))
+        }
+    }
 }
 
 // When `E`, the inferred type of expression is `None`, it means it contains a variable whose type inference have failed previously,
@@ -295,7 +320,10 @@ impl Visitor<Result<(), TypeErrors>, Option<Result<Type, TypeError>>> for TypeCh
         call: &FunctionCallExpression,
     ) -> Option<Result<Type, TypeError>> {
         if (call.identifier.value == "print") {
-            Some(Ok(Type::Nothing))
+            match self.visit_expression(&call.arguments.arguments[0])? {
+                Ok(t) => Some(Ok(Type::Nothing)),
+                Err(t) => Some(Err(t)),
+            }
         } else {
             Some(Err(TypeError::UndeclaredVariable {
                 variable: call.identifier.value.clone(),
@@ -474,13 +502,14 @@ impl Visitor<Result<(), TypeErrors>, Option<Result<Type, TypeError>>> for TypeCh
     }
 
     fn visit_for_loop(&mut self, stmt: &ForLoopStatement) -> Result<(), TypeErrors> {
-        /*merge_type_errors_capture_errs! {errs,
-            self.env_map.insert(stmt.variable.value.clone(), Type::Int);
+        merge_type_errors_capture_errs! {errs,
+            let _ = self.env_map.insert(stmt.variable.value.clone(), Type::Int);
             let inital_value = > e self.visit_expression(&stmt.initial_value);
+            > TypeChecker::for_loop_helper_1(inital_value);
             let end_value = >e self.visit_expression(&stmt.end_value);
-            assert_eq!(&stmt.);
+            > TypeChecker::for_loop_helper_1(end_value);
+            > self.for_loop_helper_2(&stmt.next_variable.value);
             > self.visit_block(&stmt.body);
-        }*/
-        todo!()
+        }
     }
 }

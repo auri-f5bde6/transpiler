@@ -11,6 +11,7 @@ use parser::{Statement, Visitor};
 use paste::paste;
 use std::collections::btree_set::Intersection;
 use std::collections::{HashSet, VecDeque};
+use std::env::var;
 
 macro_rules! implement_with_operand {
     ($name:ident) => {
@@ -557,11 +558,47 @@ impl Visitor<(), ()> for Compiler {
                              LDA i
                              ADD literal_1
                              STA i
-                             BRA label_while_cond_0
+                             BRA label_cond
                      label_1 ...
 
 
                 */
-        todo!()
+        let zero = self.get_literal(0);
+        let one = self.get_literal(1);
+
+        let labels = self.get_hinted_labels("for_loop");
+        let l_cond = labels.get_hinted_label("cond");
+        let l_continue_true = labels.get_hinted_label("continue_true");
+        let l_continue_false = labels.get_hinted_label("continue_false");
+        let l_continue = labels.get_hinted_label("continue");
+        let l_finish = labels.get_hinted_label("finish");
+
+        let variable = self.new_variable(stmt.variable.value.clone());
+        let next_variable = self.new_variable(stmt.next_variable.value.clone());
+        let end_value = self.get_temp();
+
+        self.visit_expression(&stmt.end_value);
+        self.push_sta(&end_value);
+
+        self.visit_expression(&stmt.initial_value);
+        self.push_sta(&variable);
+        self.next_label.push_back(l_cond.clone());
+        self.push_lda(&variable);
+        self.push_sub(&end_value);
+        self.push_brz(&l_continue_false);
+        self.push_brp(&l_continue_true);
+        self.next_label.push_back(l_continue_false);
+        self.push_lda(&one);
+        self.push_bra(&l_continue);
+        self.next_label.push_back(l_continue_true);
+        self.push_lda(&l_finish);
+        self.next_label.push_back(l_continue);
+        self.push_brz(&one);
+        self.visit_block(&stmt.body);
+        self.push_lda(&variable);
+        self.push_add(&one);
+        self.push_sta(&variable);
+        self.push_bra(&l_cond);
+        self.next_label.push_back(l_finish)
     }
 }

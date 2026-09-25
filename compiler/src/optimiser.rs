@@ -1,4 +1,4 @@
-use crate::lmc::{Program, ProgramLine, BRA, BRP, BRZ, LDA, STA};
+use crate::lmc::{BRA, BRP, BRZ, LDA, Program, ProgramLine, STA};
 
 pub struct Optimiser {
     index: usize,
@@ -112,21 +112,25 @@ impl Optimiser {
      label_continue_true ...
     label_continue_false ...
     */
-    // fn c(&mut self) -> Option<()> {
-    //     let mut on_zero = None;
-    //     let optional = self.current()?;
-    //     if (optional.is(BRZ)) {
-    //         on_zero = Some(optional.get_operand());
-    //         self.index += 1;
-    //     }
-    //     let first = self.current()?;
-    //     let second = self.peek(1)?;
-    //     let third = self.peek(2)?;
-    //     let forth = self.peek(3)?;
-    //     let fifth = self.peek(4)?;
-    //     if (first.is(BRP) && second.is(LDA) && third.is(BRA) && forth.is(LDA) && fifth.is(BRZ) && second.get_operand().is_some_and(|s| s == "literal_1") && forth.get_operand().is_some_and(|s| s == "literal_0")) {
-    //
-    //     }
-    //
-    // }
+    /*fn c(&mut self) -> Option<()> {
+        let mut on_zero = None;
+        let optional = self.current()?;
+        if (optional.is(BRZ)) {
+            on_zero = Some(optional.get_operand());
+            self.index += 1;
+        }
+        let first = self.current()?;
+        let second = self.peek(1)?;
+        let third = self.peek(2)?;
+        let forth = self.peek(3)?;
+        let fifth = self.peek(4)?;
+        if (first.is(BRP)
+            && second.is(LDA)
+            && third.is(BRA)
+            && forth.is(LDA)
+            && fifth.is(BRZ)
+            && second.get_operand().is_some_and(|s| s == "literal_1")
+            && forth.get_operand().is_some_and(|s| s == "literal_0"))
+        {}
+    }*/
 }
