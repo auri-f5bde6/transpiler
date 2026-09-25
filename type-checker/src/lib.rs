@@ -161,6 +161,7 @@ pub enum Type {
     Int,
     Boolean,
     String,
+    Nothing,
     Other(String),
 }
 
@@ -293,7 +294,14 @@ impl Visitor<Result<(), TypeErrors>, Option<Result<Type, TypeError>>> for TypeCh
         &mut self,
         call: &FunctionCallExpression,
     ) -> Option<Result<Type, TypeError>> {
-        todo!()
+        if (call.identifier.value == "print") {
+            Some(Ok(Type::Nothing))
+        } else {
+            Some(Err(TypeError::UndeclaredVariable {
+                variable: call.identifier.value.clone(),
+                range: TokenPosition::temp_default(),
+            }))
+        }
     }
 
     fn visit_addition(

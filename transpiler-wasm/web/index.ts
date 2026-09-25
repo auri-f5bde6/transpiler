@@ -12,6 +12,16 @@ function clicked() {
     output.textContent = transpile(code_input.value);
 }
 
+code_input.value = `\
+number=5
+result=1
+while number>0
+   result=result*number
+   number=number-1
+endwhile
+// 5*4*3*2*1 = 120
+print(result)
+`
 transpile_button.onclick = clicked;
 
 // https://stackoverflow.com/a/55565128
