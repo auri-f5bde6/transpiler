@@ -7,5 +7,4 @@ edition = "2024"
 lexer = { workspace = true }
 parser = { workspace = true }
 compiler = { workspace = true }
-qbe = { workspace = true }
 type-checker = { workspace = true }

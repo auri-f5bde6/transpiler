@@ -4,7 +4,6 @@ use lexer::lexer::Lexer;
 use lexer::token::TokenType;
 use parser::parser::Parser;
 use parser::{PrettyPrint, Visitor};
-use qbe::Module;
 use std::{
     io::{Read, Write, stdin},
     process::{Command, Stdio},

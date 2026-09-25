@@ -7,5 +7,3 @@ lexer = { path = "lexer" }
 parser = { path = "parser" }
 compiler = { path = "compiler" }
 type-checker = { path = "type-checker" }
-
-qbe = "2.5.1"

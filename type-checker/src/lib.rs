@@ -77,6 +77,62 @@ impl SomeTypeErrorsToResult for Option<TypeErrors> {
     }
 }
 
+macro_rules! merge_type_errors {
+    ($($tail:tt)*) => {
+        merge_type_errors_capture_errs!(errs,  $($tail)*)
+    };
+}
+
+macro_rules! merge_type_errors_capture_errs {
+    ($errs: ident, $($tail:tt)*) => {
+        let mut $errs = None;
+        merge_type_errors_tt_muncher!($errs $($tail)*);
+        return $errs.get_result()
+    };
+}
+
+macro_rules! merge_type_errors_tt_muncher {
+    ($errs: ident) => {};
+    ($errs: ident for $ident:ident in $iter:expr; { $($body:tt)* } $($tail:tt)*) => {
+        for $ident in $iter {
+            merge_type_errors_tt_muncher!($errs $($body)*);
+        }
+        merge_type_errors_tt_muncher!($errs $($tail)*);
+    };
+    ($errs: ident let $ident:ident = >e $expr:expr; $($tail:tt)*) => {
+        let $ident = match $expr{
+            Some(v)=> match v{
+                Ok(v)=>v,
+                Err(err)=>{
+                    TypeErrors::merge_with::<()>(&mut $errs, Err(TypeErrors::SingleErr(err)));
+                    return $errs.get_result();
+                }
+            }
+            None => return Ok(())
+        };
+        merge_type_errors_tt_muncher!($errs $($tail)*);
+    };
+    ($errs: ident let $ident:ident = >s $expr:expr; $($tail:tt)*) => {
+        let $ident = match $expr{
+            Ok(v)=>v,
+            Err(err)=>{
+                TypeErrors::merge_with::<()>(&mut $errs, Err(err));
+                return $errs.get_result();
+            }
+        };
+        merge_type_errors_tt_muncher!($errs $($tail)*);
+    };
+    ($errs: ident > $e:expr;  $($tail:tt)*) => {
+        TypeErrors::merge_with(&mut $errs, $e);
+        merge_type_errors_tt_muncher!($errs $($tail)*)
+    };
+    ($errs: ident $s:stmt; $($tail:tt)*) => {
+        $s;
+        merge_type_errors_tt_muncher!($errs $($tail)*)
+    };
+
+}
+
 #[derive(PartialEq, Clone, Debug)]
 pub enum TypeError {
     UndeclaredVariable {
@@ -383,19 +439,19 @@ impl Visitor<Result<(), TypeErrors>, Option<Result<Type, TypeError>>> for TypeCh
     }
 
     fn visit_block(&mut self, stmt: &BlockStatement) -> Result<(), TypeErrors> {
-        let mut errs = None;
-        for i in &stmt.body {
-            TypeErrors::merge_with(&mut errs, self.visit_statement(&i));
+        merge_type_errors! {
+            for i in &stmt.body; {
+               > self.visit_statement(&i);
+            }
         }
-        errs.get_result()
     }
 
     fn visit_if(&mut self, stmt: &IfStatement) -> Result<(), TypeErrors> {
-        let mut errs = None;
-        TypeErrors::merge_with(&mut errs, self.check_cond(&stmt.condition));
-        TypeErrors::merge_with(&mut errs, self.visit_block(&stmt.consequence));
-        TypeErrors::merge_with(&mut errs, self.visit_block(&stmt.alternitive));
-        errs.get_result()
+        merge_type_errors! {
+            > self.check_cond(&stmt.condition);
+            > self.visit_block(&stmt.consequence);
+            > self.visit_block(&stmt.alternitive);
+        }
     }
 
     fn visit_procedure(&mut self, stmt: &ProcedureStatement) -> Result<(), TypeErrors> {
@@ -403,13 +459,20 @@ impl Visitor<Result<(), TypeErrors>, Option<Result<Type, TypeError>>> for TypeCh
     }
 
     fn visit_while(&mut self, stmt: &WhileStatement) -> Result<(), TypeErrors> {
-        let mut errs = None;
-        TypeErrors::merge_with(&mut errs, self.check_cond(&stmt.condition));
-        TypeErrors::merge_with(&mut errs, self.visit_block(&stmt.body));
-        errs.get_result()
+        merge_type_errors! {
+            > self.check_cond(&stmt.condition);
+            > self.visit_block(&stmt.body);
+        }
     }
 
     fn visit_for_loop(&mut self, stmt: &ForLoopStatement) -> Result<(), TypeErrors> {
+        /*merge_type_errors_capture_errs! {errs,
+            self.env_map.insert(stmt.variable.value.clone(), Type::Int);
+            let inital_value = > e self.visit_expression(&stmt.initial_value);
+            let end_value = >e self.visit_expression(&stmt.end_value);
+            assert_eq!(&stmt.);
+            > self.visit_block(&stmt.body);
+        }*/
         todo!()
     }
 }
