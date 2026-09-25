@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["compiler", "lexer", "parser", "repl", "type-checker"]
+members = ["compiler", "lexer", "parser", "repl", "transpiler-wasm", "type-checker"]
 
 [workspace.dependencies]
 lexer = { path = "lexer" }

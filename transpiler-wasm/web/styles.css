@@ -1,0 +1,49 @@
+.code {
+    font-family: monospace;
+    font-size: larger;
+    white-space: pre;
+    color: #cad3f5;
+    background-color: #363a4f;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+
+.half {
+    height: 100%;
+}
+
+.input-output-container {
+    display: flex;
+    flex-direction: row;
+    height: 90vh;
+    width: 100%;
+}
+
+#code-half-container {
+    width: 50%;
+    resize: horizontal;
+}
+
+#output-half-container {
+    min-width: 20%;
+    flex-basis: 0;
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+#code {
+    width: 100%;
+}
+
+#output {
+    overflow: scroll;
+}
+
+
+#slider {
+    background-color: #dee2e6;
+    cursor: col-resize;
+    width: 0.2rem;
+    user-select: none;
+}

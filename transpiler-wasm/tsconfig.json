@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "outDir": "./dist/",
+    "noImplicitAny": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "target": "esnext",
+    "allowJs": true,
+    "types": [
+      "node"
+    ],
+    "strict": true
+  },
+  "include": [
+    "web/**/*",
+    "webpack.config.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
