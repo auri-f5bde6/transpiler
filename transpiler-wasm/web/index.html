@@ -28,11 +28,22 @@
         </span>
     </div>
     <div id="output-half-container">
-        <a class="rounded-container thing" href="https://en.wikipedia.org/wiki/Little_Man_Computer">
-            Little Man Computer
-        </a>
+        <div id="output-half-tabs">
+            <div class="rounded-container thing" id="pretty-print-tab">
+                Pretty Print
+            </div>
+            <div class="rounded-container thing" id="ast-tab">
+                AST
+            </div>
+            <div class="rounded-container thing selected" id="lmc-tab">
+                Little Man Computer
+            </div>
+        </div>
+
         <div class="rounded-container height-100">
-            <div class="code" id="output"></div>
+            <div class="code tab-contents" id="pretty-print-tab-content"></div>
+            <div class="code tab-contents" id="ast-tab-content"></div>
+            <div class="code tab-contents" id="lmc-tab-content"></div>
         </div>
     </div>
 </div>

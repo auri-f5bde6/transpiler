@@ -7,3 +7,4 @@ lexer = { path = "lexer" }
 parser = { path = "parser" }
 compiler = { path = "compiler" }
 type-checker = { path = "type-checker" }
+wasm-bindgen = "0.2.128"
