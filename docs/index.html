@@ -41,9 +41,16 @@
         </div>
 
         <div class="rounded-container height-100">
-            <div class="code tab-contents" id="pretty-print-tab-content"></div>
-            <div class="code tab-contents" id="ast-tab-content"></div>
-            <div class="code tab-contents" id="lmc-tab-content"></div>
+            <label for="pretty-print-tab-content">Pretty printed</label>
+            <textarea class="code tab-contents"
+                      id="pretty-print-tab-content"
+                      readonly></textarea>
+            <label for="ast-tab-content">AST</label>
+            <textarea class="code tab-contents" id="ast-tab-content"
+                      readonly></textarea>
+            <label for="lmc-tab-content">LMC</label>
+            <textarea class="code tab-contents" id="lmc-tab-content"
+                      readonly></textarea>
         </div>
     </div>
 </div>
