@@ -29,18 +29,25 @@
     </div>
     <div id="output-half-container">
         <div id="output-half-tabs">
+            <div class="rounded-container thing" id="token-tab">
+                Tokens
+            </div>
             <div class="rounded-container thing" id="pretty-print-tab">
                 Pretty Print
             </div>
             <div class="rounded-container thing" id="ast-tab">
                 AST
             </div>
-            <div class="rounded-container thing selected" id="lmc-tab">
+            <div class="rounded-container thing" id="lmc-tab">
                 Little Man Computer
             </div>
         </div>
 
         <div class="rounded-container height-100">
+            <label for="token-tab-content">Tokens</label>
+            <textarea class="code tab-contents"
+                      id="token-tab-content"
+                      readonly></textarea>
             <label for="pretty-print-tab-content">Pretty printed</label>
             <textarea class="code tab-contents"
                       id="pretty-print-tab-content"

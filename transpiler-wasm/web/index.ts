@@ -1,19 +1,22 @@
 import "./styles.css";
 
-import {pretty_print, transpile} from '../pkg';
+import {get_tokens, pretty_print, transpile} from '../pkg';
 
 const code_input = document.getElementById("code")! as HTMLTextAreaElement;
+const token_tab_content = document.getElementById("token-tab-content")!;
 const pretty_print_tab_content = document.getElementById("pretty-print-tab-content")!;
 const lmc_tab_content = document.getElementById("lmc-tab-content")!;
 const transpile_button = document.getElementById("floating-arrow")!;
 const slider = document.getElementById("slider")! as HTMLDivElement
 const code_half = document.getElementById("code-half-container")! as HTMLDivElement;
+const token_tab = document.getElementById("token-tab")!;
 const pretty_print_tab = document.getElementById("pretty-print-tab")!;
 const ast_tab = document.getElementById("ast-tab")!;
 const lmc_tab = document.getElementById("lmc-tab")!;
 
 
 function clicked() {
+    token_tab_content.textContent = get_tokens(code_input.value);
     lmc_tab_content.textContent = transpile(code_input.value);
     pretty_print_tab_content.textContent = pretty_print(code_input.value);
 }
@@ -42,13 +45,16 @@ slider.onmousedown = function dragMouseDown(e) {
 }
 
 function on_click_apply_selected(elm: HTMLElement) {
-    elm.onclick = () => {
+
+    const f = () => {
         reset_selected();
         elm.classList.add("selected");
         for_elm_in_class("tab-contents", elm1 => (elm1 as HTMLElement).style.display = "none");
         const content = document.getElementById(`${elm.id}-content`)!;
         content.style.display = "block";
-    }
+    };
+    elm.onclick = f;
+    return f
 }
 
 function for_elm_in_class(class_name: string, func: (elm: Element) => void) {
@@ -63,6 +69,8 @@ function reset_selected(): void {
     for_elm_in_class("selected", elm => elm.classList.remove("selected"));
 }
 
+on_click_apply_selected(token_tab);
 on_click_apply_selected(pretty_print_tab);
 on_click_apply_selected(ast_tab);
-on_click_apply_selected(lmc_tab);
+const setup_lmc = on_click_apply_selected(lmc_tab);
+setup_lmc()

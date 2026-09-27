@@ -1,15 +1,21 @@
-use std::fmt::format;
-use wasm_bindgen::prelude::wasm_bindgen;
 use compiler::compiler::Compiler;
 use compiler::optimiser::Optimiser;
+use lexer::lexer::Lexer;
+use lexer::token::TokenType;
+use parser::ast::{
+    AssignStatement, BlockStatement, BooleanLiteral, ExpressionStatement, ForLoopStatement,
+    FunctionCallExpression, Identifier, IfStatement, InfixExpression, IntegerLiteral,
+    PrefixExpression, ProcedureStatement, ReturnStatement, StringLiteral, WhileStatement,
+};
 use parser::parser::Parser;
 use parser::{PrettyPrint, Visitor};
-use parser::ast::{AssignStatement, BlockStatement, BooleanLiteral, ExpressionStatement, ForLoopStatement, FunctionCallExpression, Identifier, IfStatement, InfixExpression, IntegerLiteral, PrefixExpression, ProcedureStatement, ReturnStatement, StringLiteral, WhileStatement};
+use std::fmt::format;
 use type_checker::TypeChecker;
+use wasm_bindgen::prelude::wasm_bindgen;
 
 #[wasm_bindgen]
-pub fn transpile(name: &str) -> String {
-    let mut parser = Parser::from(&*name);
+pub fn transpile(code: &str) -> String {
+    let mut parser = Parser::from(&*code);
     match parser.parse() {
         Ok(ast) => {
             let errors = TypeChecker::new().check(&ast);
@@ -28,8 +34,8 @@ pub fn transpile(name: &str) -> String {
 }
 
 #[wasm_bindgen]
-pub fn pretty_print(name: &str) -> String {
-    let mut parser = Parser::from(&*name);
+pub fn pretty_print(code: &str) -> String {
+    let mut parser = Parser::from(&*code);
     match parser.parse() {
         Ok(ast) => {
             format!("{}", ast.pretty_print())
@@ -38,6 +44,27 @@ pub fn pretty_print(name: &str) -> String {
             format!("Parser error: {:?}", err)
         }
     }
+}
+
+#[wasm_bindgen]
+pub fn get_tokens(code: &str) -> String {
+    let mut buf = String::new();
+    let mut lexer = Lexer::from(code);
+    loop {
+        match lexer.bump() {
+            Ok(token) => {
+                if token.token_type == TokenType::Eof {
+                    buf.push_str(&*format!("{:?}", token.token_type));
+                    break;
+                }
+                buf.push_str(&*format!("{:?}, ", token.token_type));
+            }
+            Err(err) => {
+                return format!("Error: {:?}", err);
+            }
+        }
+    }
+    buf
 }
 
 struct Grapher {}
