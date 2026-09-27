@@ -12,4 +12,4 @@ lexer = { workspace = true }
 parser = { workspace = true }
 compiler = { workspace = true }
 type-checker = { workspace = true }
-web-sys = "0.3.106"
+console_error_panic_hook = "0.1.7"

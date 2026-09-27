@@ -9,9 +9,15 @@ use parser::ast::{
 };
 use parser::parser::Parser;
 use parser::{PrettyPrint, Visitor};
-use std::fmt::format;
+use std::panic;
 use type_checker::TypeChecker;
 use wasm_bindgen::prelude::wasm_bindgen;
+
+#[wasm_bindgen]
+pub fn init_panic_hook() {
+    panic::set_hook(Box::new(console_error_panic_hook::hook));
+}
+
 
 #[wasm_bindgen]
 pub fn transpile(code: &str) -> String {
