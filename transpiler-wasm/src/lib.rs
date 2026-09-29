@@ -18,7 +18,6 @@ pub fn init_panic_hook() {
     panic::set_hook(Box::new(console_error_panic_hook::hook));
 }
 
-
 #[wasm_bindgen]
 pub fn transpile(code: &str) -> String {
     let mut parser = Parser::from(&*code);
@@ -63,7 +62,7 @@ pub fn get_tokens(code: &str) -> String {
                     buf.push_str(&*format!("{:?}", token.token_type));
                     break;
                 }
-                buf.push_str(&*format!("{:?}, ", token.token_type));
+                buf.push_str(&*format!("{:?}, {}", token.token_type, if (token.token_type == TokenType::Newline) { "\n" } else { "" }));
             }
             Err(err) => {
                 return format!("Error: {:?}", err);

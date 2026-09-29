@@ -110,6 +110,11 @@ sub {
     margin-bottom: 6px;
 }
 
+.thing:hover {
+    background-color: var(--ctp-macchiato-surface2);
+    border-color: var(--ctp-macchiato-surface2);
+}
+
 .height-100 {
     height: calc(100% - (32px + 2px + 6px));
     box-sizing: border-box;
