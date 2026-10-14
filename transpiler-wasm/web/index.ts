@@ -1,6 +1,8 @@
 import "./styles.css";
 
-import {get_tokens, pretty_print, transpile} from '../pkg';
+import {get_tokens, pretty_print, transpile, init_panic_hook, ast} from '../pkg';
+
+init_panic_hook()
 
 const code_input = document.getElementById("code")! as HTMLTextAreaElement;
 const token_tab_content = document.getElementById("token-tab-content")!;
@@ -13,12 +15,23 @@ const token_tab = document.getElementById("token-tab")!;
 const pretty_print_tab = document.getElementById("pretty-print-tab")!;
 const ast_tab = document.getElementById("ast-tab")!;
 const lmc_tab = document.getElementById("lmc-tab")!;
+const ast_tab_content = document.getElementById("ast-tab-content")!;
 
+google.charts.load('current', {'packages': ['orgchart']});
 
 function clicked() {
     token_tab_content.textContent = get_tokens(code_input.value);
     lmc_tab_content.textContent = transpile(code_input.value);
     pretty_print_tab_content.textContent = pretty_print(code_input.value);
+    const data = new google.visualization.DataTable();
+    console.log((ast(code_input.value)))
+    data.addColumn('string', 'Name');
+    data.addColumn('string', 'Parent');
+    data.addColumn('string', 'Tooltip');
+
+    data.addRows(JSON.parse(ast(code_input.value)));
+    const chart = new google.visualization.OrgChart(ast_tab_content);
+    chart.draw(data, {allowHtml: true})
 }
 
 code_input.value = `\
@@ -39,7 +52,7 @@ slider.onmousedown = function dragMouseDown(e) {
     let initial = e.clientX;
     let initial_width = code_half.getBoundingClientRect().width;
     document.onmousemove = function onMouseMove(e) {
-        code_half.style.width = `${initial_width + e.clientX - initial}px`;
+        code_half.style.width = `${Math.max(initial_width + e.clientX - initial, 0)}px`;
     }
     document.onmouseup = () => document.onmousemove = document.onmouseup = null;
 }

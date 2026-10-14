@@ -13,3 +13,6 @@ parser = { workspace = true }
 compiler = { workspace = true }
 type-checker = { workspace = true }
 console_error_panic_hook = "0.1.7"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+log = "0.4.34"
