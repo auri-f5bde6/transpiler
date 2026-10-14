@@ -24,14 +24,13 @@ function clicked() {
     lmc_tab_content.textContent = transpile(code_input.value);
     pretty_print_tab_content.textContent = pretty_print(code_input.value);
     const data = new google.visualization.DataTable();
-    console.log((ast(code_input.value)))
     data.addColumn('string', 'Name');
     data.addColumn('string', 'Parent');
     data.addColumn('string', 'Tooltip');
 
     data.addRows(JSON.parse(ast(code_input.value)));
     const chart = new google.visualization.OrgChart(ast_tab_content);
-    chart.draw(data, {allowHtml: true})
+    chart.draw(data, {allowHtml: true, nodeClass: "ast-node", selectedNodeClass: "ast-node-selected"})
 }
 
 code_input.value = `\

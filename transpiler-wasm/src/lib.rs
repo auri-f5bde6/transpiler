@@ -1,6 +1,6 @@
 mod graph;
 
-use crate::graph::{FormattedValue, NameValue, Row, Rows};
+use crate::graph::{AstDisplay, FormattedValue, NameValue, Row, Rows};
 use compiler::compiler::Compiler;
 use compiler::optimiser::Optimiser;
 use lexer::lexer::Lexer;
@@ -99,16 +99,10 @@ pub fn get_tokens(code: &str) -> String {
     }
     buf
 }
-fn escapeHtml(html: &str) -> String {
-    html.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace('"', "&quot;")
-        .replace("'", "&#39;")
-}
+
 struct Grapher {
     id: usize,
-    rows: Rows,
+    rows: Rows<AstDisplay>,
 }
 impl Grapher {
     fn new() -> Self {
@@ -117,30 +111,55 @@ impl Grapher {
             rows: Vec::new(),
         }
     }
-
-    fn visit_root(mut self, program_root: ProgramRoot) -> Rows {
+    fn infix_helper(
+        &mut self,
+        op: &str,
+        infix: &InfixExpression,
+        left: Row<AstDisplay>,
+        right: Row<AstDisplay>,
+    ) -> Row<AstDisplay> {
+        let name = self.getName("InfixExpression", Some(op));
+        self.rows.push(left.with_parent(name.get_name()));
+        self.rows.push(right.with_parent(name.get_name()));
+        Row {
+            name,
+            parent: None,
+            tooltip: None,
+        }
+    }
+    fn prefix_helper(
+        &mut self,
+        op: &str,
+        prefix: &PrefixExpression,
+        right: Row<AstDisplay>,
+    ) -> Row<AstDisplay> {
+        let name = self.getName("PrefixExpression", Some(op));
+        self.rows.push(right.with_parent(name.get_name()));
+        Row {
+            name,
+            parent: None,
+            tooltip: None,
+        }
+    }
+    fn visit_root(mut self, program_root: ProgramRoot) -> Rows<AstDisplay> {
         let root_node = self.visit_statements("ProgramRoot", &program_root.0);
         self.rows.push(root_node);
         self.rows
     }
 
-    fn getName(&mut self, ast_name: &str, value: Option<&str>) -> NameValue {
+    fn getName(&mut self, ast_name: &str, value: Option<&str>) -> NameValue<AstDisplay> {
         let x = NameValue::Formatted(FormattedValue {
             value: self.id.to_string(),
-            formatting: format!(
-                "<div class='ast_name'>{}</div>{}",
-                escapeHtml(ast_name),
-                value.map_or(String::new(), |x| format!(
-                    "<div class='ast_value'>{}</div>",
-                    escapeHtml(x)
-                ))
-            ),
+            formatting: AstDisplay {
+                title: ast_name.into(),
+                subtitle: value.map(String::from),
+            },
         });
         self.id += 1;
         x
     }
 
-    fn visit_statements(&mut self, stmt_name: &str, stmt: &BlockStatement) -> Row {
+    fn visit_statements(&mut self, stmt_name: &str, stmt: &BlockStatement) -> Row<AstDisplay> {
         let name = self.getName(stmt_name, None);
         for stmt in &stmt.body {
             let child = self.visit_statement(stmt).with_parent(name.get_name());
@@ -153,8 +172,8 @@ impl Grapher {
         }
     }
 }
-impl Visitor<Row, Row> for Grapher {
-    fn visit_identifier(&mut self, ident: &Identifier) -> Row {
+impl Visitor<Row<AstDisplay>, Row<AstDisplay>> for Grapher {
+    fn visit_identifier(&mut self, ident: &Identifier) -> Row<AstDisplay> {
         Row {
             name: self.getName("Identifier", Some(&*ident.value)),
             parent: None,
@@ -162,7 +181,7 @@ impl Visitor<Row, Row> for Grapher {
         }
     }
 
-    fn visit_integer(&mut self, literal: &IntegerLiteral) -> Row {
+    fn visit_integer(&mut self, literal: &IntegerLiteral) -> Row<AstDisplay> {
         Row {
             name: self.getName("IntegerLiteral", Some(&*literal.value.to_string())),
             parent: None,
@@ -170,7 +189,7 @@ impl Visitor<Row, Row> for Grapher {
         }
     }
 
-    fn visit_boolean(&mut self, literal: &BooleanLiteral) -> Row {
+    fn visit_boolean(&mut self, literal: &BooleanLiteral) -> Row<AstDisplay> {
         Row {
             name: self.getName("BooleanLiteral", Some(&*literal.value.to_string())),
             parent: None,
@@ -178,7 +197,7 @@ impl Visitor<Row, Row> for Grapher {
         }
     }
 
-    fn visit_string(&mut self, literal: &StringLiteral) -> Row {
+    fn visit_string(&mut self, literal: &StringLiteral) -> Row<AstDisplay> {
         Row {
             name: self.getName("StringLiteral", Some(&*literal.value)),
             parent: None,
@@ -186,14 +205,15 @@ impl Visitor<Row, Row> for Grapher {
         }
     }
 
-    fn visit_function_call(&mut self, call: &FunctionCallExpression) -> Row {
-        todo!()
-    }
+    fn visit_function_call(&mut self, call: &FunctionCallExpression) -> Row<AstDisplay> {
+        let name = self.getName("FunctionCallExpression", None);
 
-    fn visit_addition(&mut self, infix: &InfixExpression, left: Row, right: Row) -> Row {
-        let name = self.getName("InfixExpression", Some("+"));
-        self.rows.push(left.with_parent(name.get_name()));
-        self.rows.push(right.with_parent(name.get_name()));
+        let identifier = self.visit_identifier(&call.identifier);
+        self.rows.push(identifier.with_parent(name.get_name()));
+        for expr in &call.arguments.arguments {
+            let expr = self.visit_expression(expr).with_parent(name.get_name());
+            self.rows.push(expr)
+        }
         Row {
             name,
             parent: None,
@@ -201,55 +221,117 @@ impl Visitor<Row, Row> for Grapher {
         }
     }
 
-    fn visit_subtraction(&mut self, infix: &InfixExpression, left: Row, right: Row) -> Row {
-        todo!()
+    fn visit_addition(
+        &mut self,
+        infix: &InfixExpression,
+        left: Row<AstDisplay>,
+        right: Row<AstDisplay>,
+    ) -> Row<AstDisplay> {
+        self.infix_helper("+", infix, left, right)
     }
 
-    fn visit_division(&mut self, infix: &InfixExpression, left: Row, right: Row) -> Row {
-        todo!()
+    fn visit_subtraction(
+        &mut self,
+        infix: &InfixExpression,
+        left: Row<AstDisplay>,
+        right: Row<AstDisplay>,
+    ) -> Row<AstDisplay> {
+        self.infix_helper("-", infix, left, right)
     }
 
-    fn visit_multiplication(&mut self, infix: &InfixExpression, left: Row, right: Row) -> Row {
-        todo!()
+    fn visit_division(
+        &mut self,
+        infix: &InfixExpression,
+        left: Row<AstDisplay>,
+        right: Row<AstDisplay>,
+    ) -> Row<AstDisplay> {
+        self.infix_helper("/", infix, left, right)
     }
 
-    fn visit_equal(&mut self, infix: &InfixExpression, left: Row, right: Row) -> Row {
-        todo!()
+    fn visit_multiplication(
+        &mut self,
+        infix: &InfixExpression,
+        left: Row<AstDisplay>,
+        right: Row<AstDisplay>,
+    ) -> Row<AstDisplay> {
+        self.infix_helper("*", infix, left, right)
     }
 
-    fn visit_not_equal(&mut self, infix: &InfixExpression, left: Row, right: Row) -> Row {
-        todo!()
+    fn visit_equal(
+        &mut self,
+        infix: &InfixExpression,
+        left: Row<AstDisplay>,
+        right: Row<AstDisplay>,
+    ) -> Row<AstDisplay> {
+        self.infix_helper("==", infix, left, right)
     }
 
-    fn visit_greater(&mut self, infix: &InfixExpression, left: Row, right: Row) -> Row {
-        todo!()
+    fn visit_not_equal(
+        &mut self,
+        infix: &InfixExpression,
+        left: Row<AstDisplay>,
+        right: Row<AstDisplay>,
+    ) -> Row<AstDisplay> {
+        self.infix_helper("!=", infix, left, right)
     }
 
-    fn visit_greater_equal(&mut self, infix: &InfixExpression, left: Row, right: Row) -> Row {
-        todo!()
+    fn visit_greater(
+        &mut self,
+        infix: &InfixExpression,
+        left: Row<AstDisplay>,
+        right: Row<AstDisplay>,
+    ) -> Row<AstDisplay> {
+        self.infix_helper(">", infix, left, right)
     }
 
-    fn visit_lesser(&mut self, infix: &InfixExpression, left: Row, right: Row) -> Row {
-        todo!()
+    fn visit_greater_equal(
+        &mut self,
+        infix: &InfixExpression,
+        left: Row<AstDisplay>,
+        right: Row<AstDisplay>,
+    ) -> Row<AstDisplay> {
+        self.infix_helper(">=", infix, left, right)
     }
 
-    fn visit_lesser_equal(&mut self, infix: &InfixExpression, left: Row, right: Row) -> Row {
-        todo!()
+    fn visit_lesser(
+        &mut self,
+        infix: &InfixExpression,
+        left: Row<AstDisplay>,
+        right: Row<AstDisplay>,
+    ) -> Row<AstDisplay> {
+        self.infix_helper("<", infix, left, right)
     }
 
-    fn visit_positive(&mut self, prefix: &PrefixExpression, right: Row) -> Row {
-        todo!()
+    fn visit_lesser_equal(
+        &mut self,
+        infix: &InfixExpression,
+        left: Row<AstDisplay>,
+        right: Row<AstDisplay>,
+    ) -> Row<AstDisplay> {
+        self.infix_helper("<=", infix, left, right)
     }
 
-    fn visit_negation(&mut self, prefix: &PrefixExpression, right: Row) -> Row {
-        todo!()
+    fn visit_positive(
+        &mut self,
+        prefix: &PrefixExpression,
+        right: Row<AstDisplay>,
+    ) -> Row<AstDisplay> {
+        self.prefix_helper("+", prefix, right)
     }
 
-    fn visit_not(&mut self, prefix: &PrefixExpression, right: Row) -> Row {
-        todo!()
+    fn visit_negation(
+        &mut self,
+        prefix: &PrefixExpression,
+        right: Row<AstDisplay>,
+    ) -> Row<AstDisplay> {
+        self.prefix_helper("-", prefix, right)
     }
 
-    fn visit_assign(&mut self, stmt: &AssignStatement) -> Row {
+    fn visit_not(&mut self, prefix: &PrefixExpression, right: Row<AstDisplay>) -> Row<AstDisplay> {
+        self.prefix_helper("NOT", prefix, right)
+    }
+
+    fn visit_assign(&mut self, stmt: &AssignStatement) -> Row<AstDisplay> {
         let var_name = self.visit_identifier(&stmt.variable);
         let expr = self.visit_expression(&stmt.value);
         let name = self.getName("AssignStatement", None);
@@ -262,11 +344,18 @@ impl Visitor<Row, Row> for Grapher {
         }
     }
 
-    fn visit_return(&mut self, stmt: &ReturnStatement) -> Row {
-        todo!()
+    fn visit_return(&mut self, stmt: &ReturnStatement) -> Row<AstDisplay> {
+        let expr = self.visit_expression(&stmt.expression);
+        let name = self.getName("ReturnStatement", None);
+        self.rows.push(expr.with_parent(name.get_name()));
+        Row {
+            name,
+            parent: None,
+            tooltip: None,
+        }
     }
 
-    fn visit_expression_statement(&mut self, expr: &ExpressionStatement) -> Row {
+    fn visit_expression_statement(&mut self, expr: &ExpressionStatement) -> Row<AstDisplay> {
         let expr = self.visit_expression(&expr.expression);
         let name = self.getName("ExpressionStatement", None);
         self.rows.push(expr.with_parent(name.get_name()));
@@ -277,23 +366,79 @@ impl Visitor<Row, Row> for Grapher {
         }
     }
 
-    fn visit_block(&mut self, stmt: &BlockStatement) -> Row {
+    fn visit_block(&mut self, stmt: &BlockStatement) -> Row<AstDisplay> {
         self.visit_statements("BlockStatement", stmt)
     }
 
-    fn visit_if(&mut self, stmt: &IfStatement) -> Row {
+    fn visit_if(&mut self, stmt: &IfStatement) -> Row<AstDisplay> {
+        let expr = self.visit_expression(&stmt.condition);
+        let consequence = self.visit_block(&stmt.consequence).map_display_name(
+            |_| unreachable!(),
+            |v| v.with_subtitle(String::from("consequence")),
+        );
+        let alternative = self.visit_block(&stmt.alternitive).map_display_name(
+            |_| unreachable!(),
+            |v| v.with_subtitle(String::from("alternitive")),
+        );
+        let name = self.getName("IfStatement", None);
+        self.rows.push(expr.with_parent(name.get_name()));
+        self.rows.push(consequence.with_parent(name.get_name()));
+        self.rows.push(alternative.with_parent(name.get_name()));
+        Row {
+            name,
+            parent: None,
+            tooltip: None,
+        }
+    }
+
+    fn visit_procedure(&mut self, stmt: &ProcedureStatement) -> Row<AstDisplay> {
         todo!()
     }
 
-    fn visit_procedure(&mut self, stmt: &ProcedureStatement) -> Row {
-        todo!()
+    fn visit_while(&mut self, stmt: &WhileStatement) -> Row<AstDisplay> {
+        let cond = self.visit_expression(&stmt.condition);
+        let body = self.visit_block(&stmt.body).map_display_name(
+            |_| unreachable!(),
+            |v| v.with_subtitle(String::from("body")),
+        );
+        let name = self.getName("WhileStatement", None);
+        self.rows.push(cond.with_parent(name.get_name()));
+        self.rows.push(body.with_parent(name.get_name()));
+        Row {
+            name,
+            parent: None,
+            tooltip: None,
+        }
     }
 
-    fn visit_while(&mut self, stmt: &WhileStatement) -> Row {
-        todo!()
-    }
-
-    fn visit_for_loop(&mut self, stmt: &ForLoopStatement) -> Row {
-        todo!()
+    fn visit_for_loop(&mut self, stmt: &ForLoopStatement) -> Row<AstDisplay> {
+        let variable = self.visit_identifier(&stmt.variable);
+        let initial_value = self.visit_expression(&stmt.initial_value).map_display_name(
+            |_| unreachable!(),
+            |v| v.map_subtitle(|s| s.map(|s| format!("initial value\n{}", s))),
+        );
+        let end_value = self.visit_expression(&stmt.end_value).map_display_name(
+            |_| unreachable!(),
+            |v| v.map_subtitle(|s| s.map(|s| format!("end value\n{}", s))),
+        );
+        let body = self.visit_block(&stmt.body).map_display_name(
+            |_| unreachable!(),
+            |v| v.with_subtitle(String::from("body")),
+        );
+        let next_variable = self.visit_identifier(&stmt.next_variable).map_display_name(
+            |_| unreachable!(),
+            |v| v.map_subtitle(|s| s.map(|s| format!("next variable\n{}", s))),
+        );
+        let name = self.getName("ForLoopStatement", None);
+        self.rows.push(variable.with_parent(name.get_name()));
+        self.rows.push(initial_value.with_parent(name.get_name()));
+        self.rows.push(end_value.with_parent(name.get_name()));
+        self.rows.push(body.with_parent(name.get_name()));
+        self.rows.push(next_variable.with_parent(name.get_name()));
+        Row {
+            name,
+            parent: None,
+            tooltip: None,
+        }
     }
 }

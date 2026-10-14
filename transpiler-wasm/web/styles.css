@@ -176,4 +176,54 @@ label {
     overflow: scroll;
     height: 100%;
     width: 100%;
+    background-color: var(--ctp-macchiato-base);
+    user-select: none;
+}
+
+.ast-name {
+    white-space: pre;
+    font-size: 0.9rem;
+}
+
+.ast-value {
+    white-space: pre;
+    font-size: 0.7rem;
+}
+
+.ast-node {
+    background: var(--ctp-macchiato-base);
+    background-color: var(--ctp-macchiato-base);
+
+    border: 2px solid var(--ctp-macchiato-pink);
+    border-radius: 10px;
+}
+
+.ast-node > div {
+    color: var(--ctp-macchiato-text);
+    font-family: "Maple Mono", monospace;
+}
+
+/*
+.ast-node-selected {
+    background-color: var(--ctp-macchiato-pink);
+    border: 2px solid var(--ctp-macchiato-surface1);
+}
+
+.ast-node-selected > div {
+    color: var(--ctp-frappe-crust);
+    font-family: "Maple Mono", monospace;
+}
+
+ */
+
+.google-visualization-orgchart-linebottom {
+    border-bottom: 1px solid var(--ctp-macchiato-text) !important;
+}
+
+.google-visualization-orgchart-lineleft {
+    border-left: 1px solid var(--ctp-macchiato-text) !important;
+}
+
+.google-visualization-orgchart-lineright {
+    border-right: 1px solid var(--ctp-macchiato-text) !important;
 }
