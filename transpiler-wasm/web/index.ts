@@ -41,7 +41,7 @@ while number>0
    number=number-1
 endwhile
 // 5*4*3*2*1 = 120
-print(result)
+print(result == 5*4*3*2*1) // (basic) constant folding by walking AST
 `;
 transpile_button.onclick = clicked;
 
