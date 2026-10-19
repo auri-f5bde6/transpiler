@@ -1,33 +1,33 @@
 use lexer::position::TokenPosition;
 use parser::ast::{
     AssignStatement, BlockStatement, BooleanLiteral, Expression, ExpressionStatement,
-    ForLoopStatement, FunctionCallExpression, Identifier, IfStatement, InfixExpression,
-    IntegerLiteral, PrefixExpression, ProcedureStatement, ProgramRoot, ReturnStatement,
-    StringLiteral, WhileStatement,
+    ForLoopStatement, FunctionArguments, FunctionCallExpression, Identifier, IfStatement,
+    InfixExpression, IntegerLiteral, PrefixExpression, ProcedureStatement, ProgramRoot,
+    ReturnStatement, StringLiteral, WhileStatement,
 };
 use parser::{Statement, Visitor};
 
 macro_rules! infix_helper {
     ($infix:ident, $left:ident, $right:ident, $({$type:ident, $func:expr}),+) => {
-        match ($left, $right) {
+        match ($left.clone(), $right.clone()) {
             $(
             (Expression::$type(l), Expression::$type(r)) => Expression::$type(Box::new($type {
                 value: ($func)(l.value, r.value),
                 token_position: TokenPosition::concat(l.token_position, r.token_position),
             })),
             ),+
-            _ => $infix.clone().into(),
+            _ => Expression::Infix(Box::new(InfixExpression{left: $left, operator: $infix.operator.clone(), right: $right})),
         }
     };
     ($infix:ident, $left:ident, $right:ident, $({$type:ident, $output:ident, $func:expr}),+) => {
-        match ($left, $right) {
+        match ($left.clone(), $right.clone()) {
             $(
             (Expression::$type(l), Expression::$type(r)) => Expression::$output(Box::new($output {
                 value: ($func)(l.value, r.value),
                 token_position: TokenPosition::concat(l.token_position, r.token_position),
             })),
             )+
-            _ => $infix.clone().into(),
+            _ => Expression::Infix(Box::new(InfixExpression{left: $left, operator: $infix.operator.clone(), right: $right})),
         }
     };
 }
@@ -71,7 +71,17 @@ impl Visitor<Statement, Expression> for AstOptimiser {
     }
 
     fn visit_function_call(&mut self, call: &FunctionCallExpression) -> Expression {
-        call.clone().into()
+        Expression::FunctionCall(Box::new(FunctionCallExpression {
+            identifier: call.identifier.clone(),
+            arguments: FunctionArguments {
+                arguments: call
+                    .arguments
+                    .arguments
+                    .iter()
+                    .map(|x| self.visit_expression(x))
+                    .collect(),
+            },
+        }))
     }
 
     fn visit_addition(
