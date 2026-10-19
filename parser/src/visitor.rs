@@ -1,5 +1,10 @@
 use crate::Statement;
-use crate::ast::{AssignStatement, BlockStatement, BooleanLiteral, Expression, ExpressionStatement, ForLoopStatement, FunctionCallExpression, Identifier, IfStatement, InfixExpression, IntegerLiteral, PrefixExpression, ProcedureStatement, ProgramRoot, ReturnStatement, StringLiteral, WhileStatement};
+use crate::ast::{
+    AssignStatement, BlockStatement, BooleanLiteral, Expression, ExpressionStatement,
+    ForLoopStatement, FunctionCallExpression, Identifier, IfStatement, InfixExpression,
+    IntegerLiteral, PrefixExpression, ProcedureStatement, ProgramRoot, ReturnStatement,
+    StringLiteral, WhileStatement,
+};
 use lexer::token::TokenType;
 
 pub trait Visitor<S, E> {
@@ -41,7 +46,7 @@ pub trait Visitor<S, E> {
             TokenType::Minus => self.visit_subtraction(infix, left, right),
             TokenType::Divide => self.visit_division(infix, left, right),
             TokenType::Multiply => self.visit_multiplication(infix, left, right),
-            TokenType::Modulo => todo!(),
+            TokenType::Modulo => self.visit_modulo(infix, left, right),
             TokenType::Equal => self.visit_equal(infix, left, right),
             TokenType::NotEqual => self.visit_not_equal(infix, left, right),
             TokenType::Greater => self.visit_greater(infix, left, right),
@@ -57,6 +62,7 @@ pub trait Visitor<S, E> {
     fn visit_subtraction(&mut self, infix: &InfixExpression, left: E, right: E) -> E;
     fn visit_division(&mut self, infix: &InfixExpression, left: E, right: E) -> E;
     fn visit_multiplication(&mut self, infix: &InfixExpression, left: E, right: E) -> E;
+    fn visit_modulo(&mut self, infix: &InfixExpression, left: E, right: E) -> E;
     fn visit_equal(&mut self, infix: &InfixExpression, left: E, right: E) -> E;
     fn visit_not_equal(&mut self, infix: &InfixExpression, left: E, right: E) -> E;
     fn visit_greater(&mut self, infix: &InfixExpression, left: E, right: E) -> E;
@@ -68,24 +74,48 @@ pub trait Visitor<S, E> {
     fn visit_negation(&mut self, prefix: &PrefixExpression, right: E) -> E;
     fn visit_not(&mut self, prefix: &PrefixExpression, right: E) -> E;
 
+    /// Override this if you do not want `visit_statement` to automatically visit the expression contained within statement
+    fn visit_expression_in_visit_statement(&mut self, expression: &Expression) -> E {
+        self.visit_expression(expression)
+    }
+
     fn visit_statement(&mut self, statement: &Statement) -> S {
         match statement {
-            Statement::Assign(stmt) => self.visit_assign(stmt),
-            Statement::Return(stmt) => self.visit_return(stmt),
-            Statement::Expression(expr) => self.visit_expression_statement(expr),
+            Statement::Assign(stmt) => {
+                let v = self.visit_expression_in_visit_statement(&stmt.value);
+                self.visit_assign(stmt, v)
+            }
+            Statement::Return(stmt) => {
+                let v = self.visit_expression_in_visit_statement(&stmt.expression);
+                self.visit_return(stmt, v)
+            }
+            Statement::Expression(expr) => {
+                let e = self.visit_expression_in_visit_statement(&expr.expression);
+                self.visit_expression_statement(expr, e)
+            }
             Statement::Block(stmt) => self.visit_block(stmt),
-            Statement::If(stmt) => self.visit_if(stmt),
+            Statement::If(stmt) => {
+                let cond = self.visit_expression_in_visit_statement(&stmt.condition);
+                self.visit_if(stmt, cond)
+            }
             Statement::Procedure(stmt) => self.visit_procedure(stmt),
-            Statement::While(stmt) => self.visit_while(stmt),
-            Statement::ForLoop(stmt) => self.visit_for_loop(stmt),
+            Statement::While(stmt) => {
+                let cond = self.visit_expression_in_visit_statement(&stmt.condition);
+                self.visit_while(stmt, cond)
+            }
+            Statement::ForLoop(stmt) => {
+                let initial = self.visit_expression_in_visit_statement(&stmt.initial_value);
+                let end = self.visit_expression_in_visit_statement(&stmt.end_value);
+                self.visit_for_loop(stmt, initial, end)
+            }
         }
     }
-    fn visit_assign(&mut self, stmt: &AssignStatement) -> S;
-    fn visit_return(&mut self, stmt: &ReturnStatement) -> S;
-    fn visit_expression_statement(&mut self, expr: &ExpressionStatement) -> S;
+    fn visit_assign(&mut self, stmt: &AssignStatement, value: E) -> S;
+    fn visit_return(&mut self, stmt: &ReturnStatement, expression: E) -> S;
+    fn visit_expression_statement(&mut self, expr: &ExpressionStatement, expression: E) -> S;
     fn visit_block(&mut self, stmt: &BlockStatement) -> S;
-    fn visit_if(&mut self, stmt: &IfStatement) -> S;
+    fn visit_if(&mut self, stmt: &IfStatement, condition: E) -> S;
     fn visit_procedure(&mut self, stmt: &ProcedureStatement) -> S;
-    fn visit_while(&mut self, stmt: &WhileStatement) -> S;
-    fn visit_for_loop(&mut self, stmt: &ForLoopStatement) -> S;
+    fn visit_while(&mut self, stmt: &WhileStatement, condition: E) -> S;
+    fn visit_for_loop(&mut self, stmt: &ForLoopStatement, initial_value: E, end_value: E) -> S;
 }

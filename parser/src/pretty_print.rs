@@ -113,6 +113,10 @@ impl<'a> Visitor<(), String> for PrettyPrinter<'a> {
         format!("({} * {})", left, right)
     }
 
+    fn visit_modulo(&mut self, infix: &InfixExpression, left: String, right: String) -> String {
+        format!("({} MOD {})", left, right)
+    }
+
     fn visit_equal(&mut self, infix: &InfixExpression, left: String, right: String) -> String {
         format!("({} == {})", left, right)
     }
@@ -159,30 +163,30 @@ impl<'a> Visitor<(), String> for PrettyPrinter<'a> {
         format!("(NOT {})", right)
     }
 
-    fn visit_assign(&mut self, stmt: &AssignStatement) {
+    fn visit_assign(&mut self, stmt: &AssignStatement, value: String) {
         let line = format!(
             "{}{} = {}\n",
             " ".repeat(self.indentation * SPACE_INDENTATION),
             self.visit_identifier(&stmt.variable),
-            self.visit_expression(&stmt.value)
+            value
         );
         self.buffer.push_str(&*line);
     }
 
-    fn visit_return(&mut self, stmt: &ReturnStatement) {
+    fn visit_return(&mut self, stmt: &ReturnStatement, expression: String) {
         let line = format!(
             "{}return {}\n",
             " ".repeat(self.indentation * SPACE_INDENTATION),
-            self.visit_expression(&stmt.expression)
+            expression
         );
         self.buffer.push_str(&*line);
     }
 
-    fn visit_expression_statement(&mut self, expr: &ExpressionStatement) -> () {
+    fn visit_expression_statement(&mut self, expr: &ExpressionStatement, expression: String) -> () {
         let line = format!(
             "{}{}\n",
             " ".repeat(self.indentation * SPACE_INDENTATION),
-            self.visit_expression(&expr.expression)
+            expression
         );
         self.buffer.push_str(&*line);
     }
@@ -195,11 +199,11 @@ impl<'a> Visitor<(), String> for PrettyPrinter<'a> {
         self.indentation -= 1
     }
 
-    fn visit_if(&mut self, stmt: &IfStatement) {
+    fn visit_if(&mut self, stmt: &IfStatement, condition: String) {
         let if_line = format!(
             "{}if {} then\n",
             " ".repeat(self.indentation * SPACE_INDENTATION),
-            self.visit_expression(&stmt.condition)
+            condition
         );
         self.buffer.push_str(&*if_line);
         self.visit_block(&stmt.consequence);
@@ -236,11 +240,11 @@ impl<'a> Visitor<(), String> for PrettyPrinter<'a> {
         self.buffer.push_str("endprocedure\n")
     }
 
-    fn visit_while(&mut self, stmt: &WhileStatement) {
+    fn visit_while(&mut self, stmt: &WhileStatement, condition: String) {
         let line = format!(
             "{}while {}\n",
             " ".repeat(self.indentation * SPACE_INDENTATION),
-            self.visit_expression(&stmt.condition)
+            condition
         );
         self.buffer.push_str(&*line);
         self.visit_block(&stmt.body);
@@ -250,13 +254,18 @@ impl<'a> Visitor<(), String> for PrettyPrinter<'a> {
         ))
     }
 
-    fn visit_for_loop(&mut self, stmt: &ForLoopStatement) {
+    fn visit_for_loop(
+        &mut self,
+        stmt: &ForLoopStatement,
+        initial_value: String,
+        end_value: String,
+    ) {
         let for_line = format!(
             "{}for {} = {} to {}\n",
             " ".repeat(self.indentation * SPACE_INDENTATION),
             self.visit_identifier(&stmt.variable),
-            self.visit_expression(&stmt.initial_value),
-            self.visit_expression(&stmt.end_value)
+            initial_value,
+            end_value
         );
         self.buffer.push_str(&*for_line);
         self.visit_block(&stmt.body);

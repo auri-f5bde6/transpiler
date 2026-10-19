@@ -1,8 +1,9 @@
 mod graph;
 
 use crate::graph::{AstDisplay, FormattedValue, NameValue, Row, Rows};
+use compiler::ast_optimiser::AstOptimiser;
 use compiler::compiler::Compiler;
-use compiler::optimiser::Optimiser;
+use compiler::lmc_optimiser::LmcOptimiser;
 use lexer::lexer::Lexer;
 use lexer::token::TokenType;
 use log::log;
@@ -34,12 +35,13 @@ pub fn transpile(code: &str) -> String {
     let mut parser = Parser::from(&*code);
     match parser.parse() {
         Ok(ast) => {
+            let ast = AstOptimiser {}.visit_root(ast);
             let errors = TypeChecker::new().check(&ast);
             if let Some(errors) = errors {
                 format!("Type error: {:?}", errors)
             } else {
                 let mut result = Compiler::compile(ast);
-                result = Optimiser::new(result).optimise();
+                result = LmcOptimiser::new(result).optimise();
                 format!("{}", result.get_program())
             }
         }
@@ -257,6 +259,15 @@ impl Visitor<Row<AstDisplay>, Row<AstDisplay>> for Grapher {
         self.infix_helper("*", infix, left, right)
     }
 
+    fn visit_modulo(
+        &mut self,
+        infix: &InfixExpression,
+        left: Row<AstDisplay>,
+        right: Row<AstDisplay>,
+    ) -> Row<AstDisplay> {
+        self.infix_helper("MOD", infix, left, right)
+    }
+
     fn visit_equal(
         &mut self,
         infix: &InfixExpression,
@@ -331,12 +342,11 @@ impl Visitor<Row<AstDisplay>, Row<AstDisplay>> for Grapher {
         self.prefix_helper("NOT", prefix, right)
     }
 
-    fn visit_assign(&mut self, stmt: &AssignStatement) -> Row<AstDisplay> {
+    fn visit_assign(&mut self, stmt: &AssignStatement, value: Row<AstDisplay>) -> Row<AstDisplay> {
         let var_name = self.visit_identifier(&stmt.variable);
-        let expr = self.visit_expression(&stmt.value);
         let name = self.getName("AssignStatement", None);
         self.rows.push(var_name.with_parent(name.get_name()));
-        self.rows.push(expr.with_parent(name.get_name()));
+        self.rows.push(value.with_parent(name.get_name()));
         Row {
             name,
             parent: None,
@@ -344,10 +354,13 @@ impl Visitor<Row<AstDisplay>, Row<AstDisplay>> for Grapher {
         }
     }
 
-    fn visit_return(&mut self, stmt: &ReturnStatement) -> Row<AstDisplay> {
-        let expr = self.visit_expression(&stmt.expression);
+    fn visit_return(
+        &mut self,
+        _stmt: &ReturnStatement,
+        expression: Row<AstDisplay>,
+    ) -> Row<AstDisplay> {
         let name = self.getName("ReturnStatement", None);
-        self.rows.push(expr.with_parent(name.get_name()));
+        self.rows.push(expression.with_parent(name.get_name()));
         Row {
             name,
             parent: None,
@@ -355,10 +368,13 @@ impl Visitor<Row<AstDisplay>, Row<AstDisplay>> for Grapher {
         }
     }
 
-    fn visit_expression_statement(&mut self, expr: &ExpressionStatement) -> Row<AstDisplay> {
-        let expr = self.visit_expression(&expr.expression);
+    fn visit_expression_statement(
+        &mut self,
+        _expr: &ExpressionStatement,
+        expression: Row<AstDisplay>,
+    ) -> Row<AstDisplay> {
         let name = self.getName("ExpressionStatement", None);
-        self.rows.push(expr.with_parent(name.get_name()));
+        self.rows.push(expression.with_parent(name.get_name()));
         Row {
             name,
             parent: None,
@@ -370,8 +386,7 @@ impl Visitor<Row<AstDisplay>, Row<AstDisplay>> for Grapher {
         self.visit_statements("BlockStatement", stmt)
     }
 
-    fn visit_if(&mut self, stmt: &IfStatement) -> Row<AstDisplay> {
-        let expr = self.visit_expression(&stmt.condition);
+    fn visit_if(&mut self, stmt: &IfStatement, condition: Row<AstDisplay>) -> Row<AstDisplay> {
         let consequence = self.visit_block(&stmt.consequence).map_display_name(
             |_| unreachable!(),
             |v| v.with_subtitle(String::from("consequence")),
@@ -381,7 +396,7 @@ impl Visitor<Row<AstDisplay>, Row<AstDisplay>> for Grapher {
             |v| v.with_subtitle(String::from("alternitive")),
         );
         let name = self.getName("IfStatement", None);
-        self.rows.push(expr.with_parent(name.get_name()));
+        self.rows.push(condition.with_parent(name.get_name()));
         self.rows.push(consequence.with_parent(name.get_name()));
         self.rows.push(alternative.with_parent(name.get_name()));
         Row {
@@ -391,18 +406,21 @@ impl Visitor<Row<AstDisplay>, Row<AstDisplay>> for Grapher {
         }
     }
 
-    fn visit_procedure(&mut self, stmt: &ProcedureStatement) -> Row<AstDisplay> {
+    fn visit_procedure(&mut self, _stmt: &ProcedureStatement) -> Row<AstDisplay> {
         todo!()
     }
 
-    fn visit_while(&mut self, stmt: &WhileStatement) -> Row<AstDisplay> {
-        let cond = self.visit_expression(&stmt.condition);
+    fn visit_while(
+        &mut self,
+        stmt: &WhileStatement,
+        condition: Row<AstDisplay>,
+    ) -> Row<AstDisplay> {
         let body = self.visit_block(&stmt.body).map_display_name(
             |_| unreachable!(),
             |v| v.with_subtitle(String::from("body")),
         );
         let name = self.getName("WhileStatement", None);
-        self.rows.push(cond.with_parent(name.get_name()));
+        self.rows.push(condition.with_parent(name.get_name()));
         self.rows.push(body.with_parent(name.get_name()));
         Row {
             name,
@@ -411,13 +429,18 @@ impl Visitor<Row<AstDisplay>, Row<AstDisplay>> for Grapher {
         }
     }
 
-    fn visit_for_loop(&mut self, stmt: &ForLoopStatement) -> Row<AstDisplay> {
+    fn visit_for_loop(
+        &mut self,
+        stmt: &ForLoopStatement,
+        initial_value: Row<AstDisplay>,
+        end_value: Row<AstDisplay>,
+    ) -> Row<AstDisplay> {
         let variable = self.visit_identifier(&stmt.variable);
-        let initial_value = self.visit_expression(&stmt.initial_value).map_display_name(
+        let initial_value = initial_value.map_display_name(
             |_| unreachable!(),
             |v| v.map_subtitle(|s| s.map(|s| format!("initial value\n{}", s))),
         );
-        let end_value = self.visit_expression(&stmt.end_value).map_display_name(
+        let end_value = end_value.map_display_name(
             |_| unreachable!(),
             |v| v.map_subtitle(|s| s.map(|s| format!("end value\n{}", s))),
         );

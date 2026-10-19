@@ -1,5 +1,6 @@
+use compiler::ast_optimiser::AstOptimiser;
 use compiler::compiler::Compiler;
-use compiler::optimiser::Optimiser;
+use compiler::lmc_optimiser::LmcOptimiser;
 use lexer::lexer::Lexer;
 use lexer::token::TokenType;
 use parser::parser::Parser;
@@ -40,6 +41,7 @@ fn main() {
         //println!("\nAST (Parser)");
         match parser.parse() {
             Ok(ast) => {
+                let ast = AstOptimiser {}.visit_root(ast);
                 let errors = TypeChecker::new().check(&ast);
                 if let Some(errors) = errors {
                     println!("{:?}", errors)
@@ -48,7 +50,7 @@ fn main() {
                     println!("{}", ast.pretty_print());
                     println!("LMC (compiler)");
                     let mut result = Compiler::compile(ast);
-                    result = Optimiser::new(result).optimise();
+                    result = LmcOptimiser::new(result).optimise();
                     println!("{}", result.get_program())
                 }
             }

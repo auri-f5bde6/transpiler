@@ -1,12 +1,12 @@
 use crate::lmc::{BRA, BRP, BRZ, LDA, Program, ProgramLine, STA};
 
-pub struct Optimiser {
+pub struct LmcOptimiser {
     index: usize,
     program: Program,
 }
-impl Optimiser {
-    pub fn new(program: Program) -> Optimiser {
-        Optimiser { program, index: 0 }
+impl LmcOptimiser {
+    pub fn new(program: Program) -> LmcOptimiser {
+        LmcOptimiser { program, index: 0 }
     }
     fn peek(&self, offset: usize) -> Option<&ProgramLine> {
         if (self.index + offset > self.program.0.len()) {
@@ -47,7 +47,7 @@ impl Optimiser {
         Some(())
     }
 
-    fn snapshot_index<T: Fn(&mut Optimiser) -> ()>(&mut self, func: T) {
+    fn snapshot_index<T: Fn(&mut LmcOptimiser) -> ()>(&mut self, func: T) {
         let index_snapshot = self.index;
         (func)(self);
         self.index = index_snapshot;

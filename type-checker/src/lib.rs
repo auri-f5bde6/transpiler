@@ -244,9 +244,8 @@ impl TypeChecker {
             _ => None,
         }
     }
-    fn check_cond(&mut self, condition: &Expression) -> Result<(), TypeErrors> {
-        let cond = self.visit_expression(condition);
-        let cond = match cond {
+    fn check_cond(&mut self, condition: Option<Result<Type, TypeError>>) -> Result<(), TypeErrors> {
+        let cond = match condition {
             Some(c) => c,
             None => return Ok(()),
         }?;
@@ -255,7 +254,7 @@ impl TypeChecker {
                 got: cond,
                 range: TokenPosition::temp_default(),
             }
-                .into())
+            .into())
         } else {
             Ok(())
         }
@@ -263,7 +262,9 @@ impl TypeChecker {
     // TODO: cant be bothered to tt munch if
     fn for_loop_helper_1(b: Type) -> Result<(), TypeErrors> {
         if (b != Type::Int) {
-            Err(TypeErrors::from(TypeError::ExpectedIntegerForForLoop { got: b }))
+            Err(TypeErrors::from(TypeError::ExpectedIntegerForForLoop {
+                got: b,
+            }))
         } else {
             Ok(())
         }
@@ -273,7 +274,9 @@ impl TypeChecker {
             if (t == Type::Int) {
                 Ok(())
             } else {
-                Err(TypeErrors::from(TypeError::ExpectedIntegerForForLoop { got: t }))
+                Err(TypeErrors::from(TypeError::ExpectedIntegerForForLoop {
+                    got: t,
+                }))
             }
         } else {
             Err(TypeErrors::from(TypeError::UndeclaredVariable {
@@ -368,6 +371,15 @@ impl Visitor<Result<(), TypeErrors>, Option<Result<Type, TypeError>>> for TypeCh
         self.infix_helper(&*MATH_INFIX, infix, left, right)
     }
 
+    fn visit_modulo(
+        &mut self,
+        infix: &InfixExpression,
+        left: Option<Result<Type, TypeError>>,
+        right: Option<Result<Type, TypeError>>,
+    ) -> Option<Result<Type, TypeError>> {
+        self.infix_helper(&*MATH_INFIX, infix, left, right)
+    }
+
     fn visit_equal(
         &mut self,
         infix: &InfixExpression,
@@ -446,8 +458,12 @@ impl Visitor<Result<(), TypeErrors>, Option<Result<Type, TypeError>>> for TypeCh
         self.prefix_helper(&*NOT_PREFIX, prefix, right)
     }
 
-    fn visit_assign(&mut self, stmt: &AssignStatement) -> Result<(), TypeErrors> {
-        let inferred_type = match self.visit_expression(&stmt.value) {
+    fn visit_assign(
+        &mut self,
+        stmt: &AssignStatement,
+        value: Option<Result<Type, TypeError>>,
+    ) -> Result<(), TypeErrors> {
+        let inferred_type = match value {
             Some(r) => r,
             None => return Ok(()),
         };
@@ -463,12 +479,20 @@ impl Visitor<Result<(), TypeErrors>, Option<Result<Type, TypeError>>> for TypeCh
         }
     }
 
-    fn visit_return(&mut self, stmt: &ReturnStatement) -> Result<(), TypeErrors> {
+    fn visit_return(
+        &mut self,
+        stmt: &ReturnStatement,
+        expression: Option<Result<Type, TypeError>>,
+    ) -> Result<(), TypeErrors> {
         todo!()
     }
 
-    fn visit_expression_statement(&mut self, expr: &ExpressionStatement) -> Result<(), TypeErrors> {
-        match self.visit_expression(&expr.expression) {
+    fn visit_expression_statement(
+        &mut self,
+        expr: &ExpressionStatement,
+        expression: Option<Result<Type, TypeError>>,
+    ) -> Result<(), TypeErrors> {
+        match expression {
             Some(result) => result.map_err(Into::into).map(|_| ()),
             None => Ok(()),
         }
@@ -482,9 +506,13 @@ impl Visitor<Result<(), TypeErrors>, Option<Result<Type, TypeError>>> for TypeCh
         }
     }
 
-    fn visit_if(&mut self, stmt: &IfStatement) -> Result<(), TypeErrors> {
+    fn visit_if(
+        &mut self,
+        stmt: &IfStatement,
+        condition: Option<Result<Type, TypeError>>,
+    ) -> Result<(), TypeErrors> {
         merge_type_errors! {
-            > self.check_cond(&stmt.condition);
+            > self.check_cond(condition);
             > self.visit_block(&stmt.consequence);
             > self.visit_block(&stmt.alternitive);
         }
@@ -494,19 +522,28 @@ impl Visitor<Result<(), TypeErrors>, Option<Result<Type, TypeError>>> for TypeCh
         todo!()
     }
 
-    fn visit_while(&mut self, stmt: &WhileStatement) -> Result<(), TypeErrors> {
+    fn visit_while(
+        &mut self,
+        stmt: &WhileStatement,
+        condition: Option<Result<Type, TypeError>>,
+    ) -> Result<(), TypeErrors> {
         merge_type_errors! {
-            > self.check_cond(&stmt.condition);
+            > self.check_cond(condition);
             > self.visit_block(&stmt.body);
         }
     }
 
-    fn visit_for_loop(&mut self, stmt: &ForLoopStatement) -> Result<(), TypeErrors> {
+    fn visit_for_loop(
+        &mut self,
+        stmt: &ForLoopStatement,
+        initial_value: Option<Result<Type, TypeError>>,
+        end_value: Option<Result<Type, TypeError>>,
+    ) -> Result<(), TypeErrors> {
         merge_type_errors_capture_errs! {errs,
             let _ = self.env_map.insert(stmt.variable.value.clone(), Type::Int);
-            let inital_value = > e self.visit_expression(&stmt.initial_value);
+            let inital_value = > e initial_value;
             > TypeChecker::for_loop_helper_1(inital_value);
-            let end_value = >e self.visit_expression(&stmt.end_value);
+            let end_value = >e end_value;
             > TypeChecker::for_loop_helper_1(end_value);
             > self.for_loop_helper_2(&stmt.next_variable.value);
             > self.visit_block(&stmt.body);

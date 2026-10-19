@@ -291,6 +291,10 @@ impl Visitor<(), ()> for Compiler {
         });
     }
 
+    fn visit_modulo(&mut self, infix: &InfixExpression, left: (), right: ()) -> () {
+        todo!()
+    }
+
     fn visit_equal(&mut self, infix: &InfixExpression, left: (), right: ()) -> () {
         // lhs == rhs
         //               (LDA lhs)
@@ -488,17 +492,21 @@ impl Visitor<(), ()> for Compiler {
         self.next_label.push_back(l_continue);
     }
 
-    fn visit_assign(&mut self, stmt: &AssignStatement) {
+    fn visit_expression_in_visit_statement(&mut self, expression: &Expression) -> () {
+        ()
+    }
+
+    fn visit_assign(&mut self, stmt: &AssignStatement, _value: ()) {
         self.visit_expression(&stmt.value);
         let name = self.new_variable(stmt.variable.value.clone());
         self.push_sta(&name);
     }
 
-    fn visit_return(&mut self, stmt: &ReturnStatement) {
+    fn visit_return(&mut self, stmt: &ReturnStatement, _expression: ()) {
         todo!()
     }
 
-    fn visit_expression_statement(&mut self, expr: &ExpressionStatement) -> () {
+    fn visit_expression_statement(&mut self, expr: &ExpressionStatement, _expression: ()) -> () {
         self.visit_expression(&expr.expression)
     }
 
@@ -511,7 +519,7 @@ impl Visitor<(), ()> for Compiler {
         }
     }
 
-    fn visit_if(&mut self, stmt: &IfStatement) {
+    fn visit_if(&mut self, stmt: &IfStatement, _condition: ()) {
         let labels = self.get_hinted_labels("if");
         let l_consequence = labels.get_hinted_label("consequence");
         let l_alternative = labels.get_hinted_label("alternative");
@@ -526,11 +534,11 @@ impl Visitor<(), ()> for Compiler {
         self.next_label.push_back(l_continue);
     }
 
-    fn visit_procedure(&mut self, stmt: &ProcedureStatement) {
+    fn visit_procedure(&mut self, _stmt: &ProcedureStatement) {
         todo!()
     }
 
-    fn visit_while(&mut self, stmt: &WhileStatement) {
+    fn visit_while(&mut self, stmt: &WhileStatement, _condition: ()) {
         let generator = self.get_hinted_labels("while");
         let cond = generator.get_hinted_label("cond");
         let end = generator.get_hinted_label("end");
@@ -542,7 +550,7 @@ impl Visitor<(), ()> for Compiler {
         self.next_label.push_back(end);
     }
 
-    fn visit_for_loop(&mut self, stmt: &ForLoopStatement) {
+    fn visit_for_loop(&mut self, stmt: &ForLoopStatement, _initial_value: (), _end_value: ()) {
         /*
                              LDA initial_vale
                              STA i
