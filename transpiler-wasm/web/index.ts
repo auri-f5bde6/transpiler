@@ -1,6 +1,6 @@
 import "./styles.css";
 
-import {get_tokens, pretty_print, transpile, init_panic_hook, ast} from '../pkg';
+import {init_panic_hook, generate_output} from '../pkg';
 
 init_panic_hook()
 
@@ -16,21 +16,29 @@ const pretty_print_tab = document.getElementById("pretty-print-tab")!;
 const ast_tab = document.getElementById("ast-tab")!;
 const lmc_tab = document.getElementById("lmc-tab")!;
 const ast_tab_content = document.getElementById("ast-tab-content")!;
+const folded_ast_tab = document.getElementById("folded-ast-tab")!;
+const folded_ast_tab_content = document.getElementById("folded-ast-tab-content")!;
 
 google.charts.load('current', {'packages': ['orgchart']});
 
-function clicked() {
-    token_tab_content.textContent = get_tokens(code_input.value);
-    lmc_tab_content.textContent = transpile(code_input.value);
-    pretty_print_tab_content.textContent = pretty_print(code_input.value);
+function create_chart(element: Element, ast: string) {
     const data = new google.visualization.DataTable();
     data.addColumn('string', 'Name');
     data.addColumn('string', 'Parent');
     data.addColumn('string', 'Tooltip');
-
-    data.addRows(JSON.parse(ast(code_input.value)));
-    const chart = new google.visualization.OrgChart(ast_tab_content);
+    data.addRows(JSON.parse(ast));
+    const chart = new google.visualization.OrgChart(element);
     chart.draw(data, {allowHtml: true, nodeClass: "ast-node", selectedNodeClass: "ast-node-selected"})
+}
+
+function clicked() {
+    const output = generate_output(code_input.value);
+    token_tab_content.textContent = output.tokens;
+    lmc_tab_content.textContent = output.lmc;
+    pretty_print_tab_content.textContent = output.pretty_printed;
+
+    create_chart(ast_tab_content, output.ast)
+    create_chart(folded_ast_tab_content, output.folded_ast)
 }
 
 code_input.value = `\
@@ -84,5 +92,6 @@ function reset_selected(): void {
 on_click_apply_selected(token_tab);
 on_click_apply_selected(pretty_print_tab);
 on_click_apply_selected(ast_tab);
+on_click_apply_selected(folded_ast_tab);
 const setup_lmc = on_click_apply_selected(lmc_tab);
 setup_lmc()

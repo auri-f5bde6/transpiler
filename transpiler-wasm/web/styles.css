@@ -172,7 +172,7 @@ label {
     display: none;
 }
 
-#ast-tab-content {
+.ast-tabs {
     overflow: scroll;
     height: 100%;
     width: 100%;

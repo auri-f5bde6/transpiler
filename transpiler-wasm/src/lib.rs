@@ -19,6 +19,15 @@ use std::panic;
 use type_checker::TypeChecker;
 use wasm_bindgen::prelude::wasm_bindgen;
 
+#[wasm_bindgen(getter_with_clone)]
+pub struct Output {
+    pub tokens: String,
+    pub pretty_printed: String,
+    pub ast: String,
+    pub folded_ast: String,
+    pub lmc: String,
+}
+
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_namespace = console)]
@@ -30,50 +39,6 @@ pub fn init_panic_hook() {
     panic::set_hook(Box::new(console_error_panic_hook::hook));
 }
 
-#[wasm_bindgen]
-pub fn transpile(code: &str) -> String {
-    let mut parser = Parser::from(&*code);
-    match parser.parse() {
-        Ok(ast) => {
-            let ast = AstOptimiser {}.visit_root(ast);
-            let errors = TypeChecker::new().check(&ast);
-            if let Some(errors) = errors {
-                format!("Type error: {:?}", errors)
-            } else {
-                let mut result = Compiler::compile(ast);
-                result = LmcOptimiser::new(result).optimise();
-                format!("{}", result.get_program())
-            }
-        }
-        Err(err) => {
-            format!("Parser error: {:?}", err)
-        }
-    }
-}
-
-#[wasm_bindgen]
-pub fn pretty_print(code: &str) -> String {
-    let mut parser = Parser::from(&*code);
-    match parser.parse() {
-        Ok(ast) => ast.pretty_print(),
-        Err(err) => {
-            format!("Parser error: {:?}", err)
-        }
-    }
-}
-
-#[wasm_bindgen]
-pub fn ast(code: &str) -> String {
-    let mut parser = Parser::from(&*code);
-    match parser.parse() {
-        Ok(ast) => serde_json::to_string(&Grapher::new().visit_root(ast)).expect("erm"),
-        Err(err) => {
-            format!("Parser error: {:?}", err)
-        }
-    }
-}
-
-#[wasm_bindgen]
 pub fn get_tokens(code: &str) -> String {
     let mut buf = String::new();
     let mut lexer = Lexer::from(code);
@@ -100,6 +65,50 @@ pub fn get_tokens(code: &str) -> String {
         }
     }
     buf
+}
+
+#[wasm_bindgen]
+pub fn generate_output(code: &str) -> Output {
+    let mut parser = Parser::from(&*code);
+
+    let pretty_printed;
+    let ast;
+    let folded_ast;
+    let lmc;
+
+    match parser.parse() {
+        Ok(root) => {
+            pretty_printed = root.pretty_print();
+            ast = serde_json::to_string(&Grapher::new().visit_root(root.clone())).unwrap();
+            let folded = AstOptimiser {}.visit_root(root);
+            folded_ast = serde_json::to_string(&Grapher::new().visit_root(folded.clone())).unwrap();
+            lmc = {
+                let errors = TypeChecker::new().check(&folded);
+                if let Some(errors) = errors {
+                    format!("Type error: {:?}", errors)
+                } else {
+                    let mut result = Compiler::compile(folded);
+                    result = LmcOptimiser::new(result).optimise();
+                    format!("{}", result.get_program())
+                }
+            }
+        }
+        Err(err) => {
+            let x = format!("Parser error: {:?}", err);
+            pretty_printed = x.clone();
+            ast = x.clone();
+            folded_ast = x.clone();
+            lmc = x;
+        }
+    }
+
+    Output {
+        tokens: get_tokens(code),
+        pretty_printed,
+        ast,
+        folded_ast,
+        lmc,
+    }
 }
 
 struct Grapher {
