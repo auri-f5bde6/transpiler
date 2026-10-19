@@ -8,12 +8,25 @@ use parser::ast::{
 use parser::{Statement, Visitor};
 
 macro_rules! infix_helper {
-    ($type:ident, $infix:ident, $left:ident, $right:ident, $func:expr) => {
+    ($infix:ident, $left:ident, $right:ident, $({$type:ident, $func:expr}),+) => {
         match ($left, $right) {
+            $(
             (Expression::$type(l), Expression::$type(r)) => Expression::$type(Box::new($type {
                 value: ($func)(l.value, r.value),
                 token_position: TokenPosition::concat(l.token_position, r.token_position),
             })),
+            ),+
+            _ => $infix.clone().into(),
+        }
+    };
+    ($infix:ident, $left:ident, $right:ident, $({$type:ident, $output:ident, $func:expr}),+) => {
+        match ($left, $right) {
+            $(
+            (Expression::$type(l), Expression::$type(r)) => Expression::$output(Box::new($output {
+                value: ($func)(l.value, r.value),
+                token_position: TokenPosition::concat(l.token_position, r.token_position),
+            })),
+            )+
             _ => $infix.clone().into(),
         }
     };
@@ -67,7 +80,7 @@ impl Visitor<Statement, Expression> for AstOptimiser {
         left: Expression,
         right: Expression,
     ) -> Expression {
-        infix_helper!(IntegerLiteral, infix, left, right, |l, r| l + r)
+        infix_helper!(infix, left, right, {IntegerLiteral, |l, r| l + r})
     }
 
     fn visit_subtraction(
@@ -76,7 +89,7 @@ impl Visitor<Statement, Expression> for AstOptimiser {
         left: Expression,
         right: Expression,
     ) -> Expression {
-        infix_helper!(IntegerLiteral, infix, left, right, |l, r| l - r)
+        infix_helper!(infix, left, right, {IntegerLiteral, |l, r| l - r})
     }
 
     fn visit_division(
@@ -85,7 +98,7 @@ impl Visitor<Statement, Expression> for AstOptimiser {
         left: Expression,
         right: Expression,
     ) -> Expression {
-        infix_helper!(IntegerLiteral, infix, left, right, |l, r| l / r)
+        infix_helper!(infix, left, right, {IntegerLiteral, |l, r| l / r})
     }
 
     fn visit_multiplication(
@@ -94,7 +107,7 @@ impl Visitor<Statement, Expression> for AstOptimiser {
         left: Expression,
         right: Expression,
     ) -> Expression {
-        infix_helper!(IntegerLiteral, infix, left, right, |l, r| l * r)
+        infix_helper!(infix, left, right, {IntegerLiteral, |l, r| l * r})
     }
 
     fn visit_modulo(
@@ -103,9 +116,7 @@ impl Visitor<Statement, Expression> for AstOptimiser {
         left: Expression,
         right: Expression,
     ) -> Expression {
-        infix_helper!(IntegerLiteral, infix, left, right, |l, r| i64::rem_euclid(
-            l, r
-        ))
+        infix_helper!(infix, left, right, {IntegerLiteral, |l, r| i64::rem_euclid(l,r)})
     }
 
     fn visit_equal(
@@ -114,7 +125,7 @@ impl Visitor<Statement, Expression> for AstOptimiser {
         left: Expression,
         right: Expression,
     ) -> Expression {
-        infix_helper!(BooleanLiteral, infix, left, right, |l, r| l == r)
+        infix_helper!(infix, left, right, {IntegerLiteral, BooleanLiteral, |l, r| l == r},{BooleanLiteral, BooleanLiteral, |l, r| l == r})
     }
 
     fn visit_not_equal(
@@ -123,7 +134,7 @@ impl Visitor<Statement, Expression> for AstOptimiser {
         left: Expression,
         right: Expression,
     ) -> Expression {
-        infix_helper!(BooleanLiteral, infix, left, right, |l, r| l != r)
+        infix_helper!(infix, left, right, {IntegerLiteral, BooleanLiteral, |l, r| l != r},{BooleanLiteral, BooleanLiteral, |l, r| l != r})
     }
 
     fn visit_greater(
@@ -132,7 +143,7 @@ impl Visitor<Statement, Expression> for AstOptimiser {
         left: Expression,
         right: Expression,
     ) -> Expression {
-        infix_helper!(BooleanLiteral, infix, left, right, |l, r| l > r)
+        infix_helper!(infix, left, right, {IntegerLiteral, BooleanLiteral, |l, r| l > r})
     }
 
     fn visit_greater_equal(
@@ -141,7 +152,7 @@ impl Visitor<Statement, Expression> for AstOptimiser {
         left: Expression,
         right: Expression,
     ) -> Expression {
-        infix_helper!(BooleanLiteral, infix, left, right, |l, r| l >= r)
+        infix_helper!(infix, left, right, {IntegerLiteral, BooleanLiteral, |l, r| l >= r})
     }
 
     fn visit_lesser(
@@ -150,7 +161,7 @@ impl Visitor<Statement, Expression> for AstOptimiser {
         left: Expression,
         right: Expression,
     ) -> Expression {
-        infix_helper!(BooleanLiteral, infix, left, right, |l, r| l < r)
+        infix_helper!(infix, left, right, {IntegerLiteral, BooleanLiteral, |l, r| l < r})
     }
 
     fn visit_lesser_equal(
@@ -159,7 +170,7 @@ impl Visitor<Statement, Expression> for AstOptimiser {
         left: Expression,
         right: Expression,
     ) -> Expression {
-        infix_helper!(BooleanLiteral, infix, left, right, |l, r| l <= r)
+        infix_helper!(infix, left, right, {IntegerLiteral, BooleanLiteral, |l, r| l <= r})
     }
 
     fn visit_positive(&mut self, prefix: &PrefixExpression, right: Expression) -> Expression {
