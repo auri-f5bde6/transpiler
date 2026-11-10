@@ -10,7 +10,7 @@ const pretty_print_tab_content = document.getElementById("pretty-print-tab-conte
 const lmc_tab_content = document.getElementById("lmc-tab-content")!;
 const transpile_button = document.getElementById("floating-arrow")!;
 const slider = document.getElementById("slider")! as HTMLDivElement
-const code_half = document.getElementById("code-half-container")! as HTMLDivElement;
+const code_half = document.getElementById("code-container")! as HTMLDivElement;
 const token_tab = document.getElementById("token-tab")!;
 const pretty_print_tab = document.getElementById("pretty-print-tab")!;
 const ast_tab = document.getElementById("ast-tab")!;
@@ -53,16 +53,45 @@ print(result == 5*4*3*2*1) // (basic) constant folding by walking AST
 `;
 transpile_button.onclick = clicked;
 
-// https://stackoverflow.com/a/55565128
-slider.onmousedown = function dragMouseDown(e) {
+function mouseOrTouchDown(e: MouseEvent | TouchEvent) {
+    let initialX;
+    let initalY;
     e.preventDefault();
-    let initial = e.clientX;
-    let initial_width = code_half.getBoundingClientRect().width;
-    document.onmousemove = function onMouseMove(e) {
-        code_half.style.width = `${Math.max(initial_width + e.clientX - initial, 0)}px`;
+    if (e instanceof MouseEvent) {
+        initialX = e.clientX;
+        initalY = e.clientY;
+    } else {
+        initialX = e.targetTouches[0].clientX;
+        initalY = e.targetTouches[0].clientY;
     }
-    document.onmouseup = () => document.onmousemove = document.onmouseup = null;
+
+    let initial_width = code_half.getBoundingClientRect().width;
+
+
+    let inital_height = code_half.getBoundingClientRect().height
+
+    if (window.matchMedia("(min-width: 700px)").matches) {
+        document.onmousemove = (e) => {
+            code_half.style.width = `${Math.max(initial_width + e.clientX - initialX, 0)}px`;
+        }
+        document.ontouchmove = (e) => {
+            code_half.style.width = `${Math.max(initial_width + e.targetTouches[0].clientX - initialX, 0)}px`;
+        }
+    } else {
+        document.onmousemove = (e) => {
+            code_half.style.height = `${Math.max(inital_height + e.clientY - initalY, 0)}px`;
+        }
+        document.ontouchmove = (e) => {
+            code_half.style.height = `${Math.max(inital_height + e.targetTouches[0].clientY - initalY, 0)}px`;
+        }
+    }
+    document.onmouseup = () => document.onmousemove = document.onmouseup = null
+    document.ontouchend = () => document.ontouchmove = document.ontouchstart = null;
 }
+
+// https://stackoverflow.com/a/55565128
+slider.onmousedown = mouseOrTouchDown;
+slider.ontouchstart = mouseOrTouchDown;
 
 function on_click_apply_selected(elm: HTMLElement) {
 
