@@ -56,8 +56,8 @@ transpile_button.onclick = clicked;
 function mouseOrTouchDown(e: MouseEvent | TouchEvent) {
     let initialX;
     let initalY;
-    e.preventDefault();
     if (e instanceof MouseEvent) {
+        e.preventDefault();
         initialX = e.clientX;
         initalY = e.clientY;
     } else {

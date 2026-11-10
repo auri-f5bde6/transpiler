@@ -99,6 +99,28 @@ macro_rules! merge_type_errors_tt_muncher {
         }
         merge_type_errors_tt_muncher!($errs $($tail)*);
     };
+    ($errs: ident if $cond:expr; { $($consequence:tt)* } else {$($alternative:tt)*} $($tail:tt)*) => {
+        if $cond {
+            merge_type_errors_tt_muncher!($errs $($consequence)*);
+        }else{
+            merge_type_errors_tt_muncher!($errs $($alternative)*);
+        }
+        merge_type_errors_tt_muncher!($errs $($tail)*);
+    };
+    ($errs: ident if $cond:expr; { $($body:tt)* } $($tail:tt)*) => {
+        if $cond {
+            merge_type_errors_tt_muncher!($errs $($body)*);
+        }
+        merge_type_errors_tt_muncher!($errs $($tail)*);
+    };
+    ($errs: ident if let $v:tt = $e:expr; { $($body:tt)* } $($tail:tt)*) => {
+        if let $v = $e {
+            merge_type_errors_tt_muncher!($errs $($body)*);
+        }
+        merge_type_errors_tt_muncher!($errs $($tail)*);
+    };
+
+
     ($errs: ident let $ident:ident = >e $expr:expr; $($tail:tt)*) => {
         let $ident = match $expr{
             Some(v)=> match v{
@@ -120,13 +142,24 @@ macro_rules! merge_type_errors_tt_muncher {
                 return $errs.get_result();
             }
         };
-        merge_type_errors_tt_muncher!($errs $($tail)*);
+        merge_type_errors_tt_muncher!($errs $($tail)*)
+    };
+    ($errs: ident let $ident:ident = $expr:expr; $($tail:tt)*) => {
+        let $ident = $expr;
+        merge_type_errors_tt_muncher!($errs $($tail)*)
     };
     ($errs: ident > $e:expr;  $($tail:tt)*) => {
         TypeErrors::merge_with(&mut $errs, $e);
         merge_type_errors_tt_muncher!($errs $($tail)*)
     };
-    ($errs: ident $s:stmt; $($tail:tt)*) => {
+    ($errs: ident >e $e:expr;  $($tail:tt)*) => {
+        match $e{
+            Some(err)=> TypeErrors::merge_with(&mut $errs, err.map_err(|x|x.into())),
+            None => return Ok(())
+        };
+        merge_type_errors_tt_muncher!($errs $($tail)*)
+    };
+    ($errs: ident $s:expr; $($tail:tt)*) => {
         $s;
         merge_type_errors_tt_muncher!($errs $($tail)*)
     };
@@ -257,32 +290,6 @@ impl TypeChecker {
             .into())
         } else {
             Ok(())
-        }
-    }
-    // TODO: cant be bothered to tt munch if
-    fn for_loop_helper_1(b: Type) -> Result<(), TypeErrors> {
-        if (b != Type::Int) {
-            Err(TypeErrors::from(TypeError::ExpectedIntegerForForLoop {
-                got: b,
-            }))
-        } else {
-            Ok(())
-        }
-    }
-    fn for_loop_helper_2(&mut self, a: &String) -> Result<(), TypeErrors> {
-        if let Some(t) = self.env_map.get(a).cloned() {
-            if (t == Type::Int) {
-                Ok(())
-            } else {
-                Err(TypeErrors::from(TypeError::ExpectedIntegerForForLoop {
-                    got: t,
-                }))
-            }
-        } else {
-            Err(TypeErrors::from(TypeError::UndeclaredVariable {
-                variable: a.clone(),
-                range: TokenPosition::temp_default(),
-            }))
         }
     }
 }
@@ -540,12 +547,31 @@ impl Visitor<Result<(), TypeErrors>, Option<Result<Type, TypeError>>> for TypeCh
         end_value: Option<Result<Type, TypeError>>,
     ) -> Result<(), TypeErrors> {
         merge_type_errors_capture_errs! {errs,
-            let _ = self.env_map.insert(stmt.variable.value.clone(), Type::Int);
-            let inital_value = > e initial_value;
-            > TypeChecker::for_loop_helper_1(inital_value);
-            let end_value = >e end_value;
-            > TypeChecker::for_loop_helper_1(end_value);
-            > self.for_loop_helper_2(&stmt.next_variable.value);
+            self.env_map.insert(stmt.variable.value.clone(), Type::Int);
+            let inital_value = >e initial_value;
+            if inital_value != Type::Int ; {
+                > Err::<(), TypeErrors>(TypeErrors::from(TypeError::ExpectedIntegerForForLoop {
+                    got: inital_value,
+                }));
+            }
+            >e end_value;
+            let name = &stmt.next_variable.value;
+            > {
+                if let Some(t) = self.env_map.get(&*name).cloned(){
+                    if (t == Type::Int) {
+                        Ok(())
+                    } else {
+                        Err(TypeErrors::from(TypeError::ExpectedIntegerForForLoop {
+                            got: t,
+                        }))
+                    }
+                } else {
+                    Err(TypeErrors::from(TypeError::UndeclaredVariable {
+                        variable: name.clone(),
+                        range: TokenPosition::temp_default(),
+                    }))
+                }
+            };
             > self.visit_block(&stmt.body);
         }
     }
