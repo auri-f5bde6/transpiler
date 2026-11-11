@@ -57,6 +57,17 @@ body {
     #slider {
         width: 0.4rem;
         height: 100% !important;
+        margin-bottom: 0 !important;
+        margin-top: 0 !important;
+        border: var(--ctp-macchiato-surface0) !important;
+        border-radius: 10px !important;
+    }
+
+    #slider-hint {
+        display: none;
+    }
+
+    .rounded-container {
     }
 }
 
@@ -92,9 +103,27 @@ body {
 
 
 #slider {
+    box-sizing: border-box;
+    margin-top: 5px;
+    margin-bottom: 5px;
     cursor: col-resize;
     position: relative;
     height: 1.8rem;
+    background-color: var(--ctp-macchiato-surface0);
+    display: flex;
+    flex-direction: column;
+    justify-items: center;
+    justify-content: center;
+    border: 4px var(--ctp-macchiato-surface1);
+    border-style: solid none;
+    border-radius: 5px;
+}
+
+#slider-hint {
+    background-color: var(--ctp-macchiato-surface1);
+    width: 100%;
+    height: 3px;
+    position: absolute;
 }
 
 h1 {
