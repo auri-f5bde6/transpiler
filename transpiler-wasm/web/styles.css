@@ -10,9 +10,8 @@
 
 body, html {
     box-sizing: border-box;
-    height: 99vh;
+    height: 99dvh;
     background: #1e2030;
-    overscroll-behavior: none;
 }
 
 body {
