@@ -48,6 +48,7 @@ body {
     display: flex;
     flex-direction: column;
     flex: 1;
+    max-height: 90%;
 }
 
 @media (min-width: 700px) {
@@ -65,10 +66,11 @@ body {
     }
 
     #slider-hint {
-        display: none;
+        display: none !important;
     }
 
-    .rounded-container {
+    .content-container {
+        max-height: unset;
     }
 }
 
